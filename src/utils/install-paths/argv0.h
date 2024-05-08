@@ -32,11 +32,11 @@ namespace uwvm::path
         char path_list_separator[8] = ":";  // could be ":; "
         if(argv0[0] == path_separator)
         {
-            ::realpath(argv0, newpath);
+            [[maybe_unused]] auto const unused1{::realpath(argv0, newpath)};
             if(!access(newpath, F_OK))
             {
                 newpath[PATH_MAX - 1] = 0;
-                ::uwvm::path::module_path = ::fast_io::u8concat(::fast_io::mnp::code_cvt_os_c_str(newpath));
+                ::uwvm::path::module_path = ::fast_io::u8concat_fast_io(::fast_io::mnp::code_cvt_os_c_str(newpath));
                 auto const begin2{strlike_begin(::fast_io::io_strlike_type<char8_t, ::fast_io::u8string>, ::uwvm::path::module_path)};
                 auto curr{strlike_curr(::fast_io::io_strlike_type<char8_t, ::fast_io::u8string>, ::uwvm::path::module_path)};
                 for(; curr != begin2; curr--)  // calculate dos path
@@ -59,11 +59,11 @@ namespace uwvm::path
             ::getcwd(newpath2, PATH_MAX);
             ::strncat(newpath2, path_separator_as_string, PATH_MAX + 256);
             ::strncat(newpath2, argv0, PATH_MAX + 256);
-            ::realpath(newpath2, newpath);
+            [[maybe_unused]] auto const unused1{::realpath(newpath2, newpath)};
             if(!access(newpath, F_OK))
             {
                 newpath[PATH_MAX - 1] = 0;
-                ::uwvm::path::module_path = ::fast_io::u8concat(::fast_io::mnp::code_cvt_os_c_str(newpath));
+                ::uwvm::path::module_path = ::fast_io::u8concat_fast_io(::fast_io::mnp::code_cvt_os_c_str(newpath));
                 auto const begin2{strlike_begin(::fast_io::io_strlike_type<char8_t, ::fast_io::u8string>, ::uwvm::path::module_path)};
                 auto curr{strlike_curr(::fast_io::io_strlike_type<char8_t, ::fast_io::u8string>, ::uwvm::path::module_path)};
                 for(; curr != begin2; curr--)  // calculate dos path
@@ -91,11 +91,11 @@ namespace uwvm::path
                 ::strncpy(newpath2, pathitem, PATH_MAX + 256);
                 ::strncat(newpath2, path_separator_as_string, PATH_MAX + 256);
                 ::strncat(newpath2, argv0, PATH_MAX + 256);
-                ::realpath(newpath2, newpath);
+                [[maybe_unused]] auto const unused1{::realpath(newpath2, newpath)};
                 if(!access(newpath, F_OK))
                 {
                     newpath[PATH_MAX - 1] = 0;
-                    ::uwvm::path::module_path = ::fast_io::u8concat(::fast_io::mnp::code_cvt_os_c_str(newpath));
+                    ::uwvm::path::module_path = ::fast_io::u8concat_fast_io(::fast_io::mnp::code_cvt_os_c_str(newpath));
                     auto const begin2{strlike_begin(::fast_io::io_strlike_type<char8_t, ::fast_io::u8string>, ::uwvm::path::module_path)};
                     auto curr{strlike_curr(::fast_io::io_strlike_type<char8_t, ::fast_io::u8string>, ::uwvm::path::module_path)};
                     for(; curr != begin2; curr--)  // calculate dos path

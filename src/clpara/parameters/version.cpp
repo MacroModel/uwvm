@@ -8,11 +8,11 @@
 #if __has_cpp_attribute(__gnu__::__cold__)
 [[__gnu__::__cold__]]
 #endif
-::uwvm::cmdline::parameter_return_type(::uwvm::parameter::details::version_callback)(::std::size_t,
+::uwvm::cmdline::parameter_return_type(::uwvm::parameter::details::version_callback)(::uwvm::cmdline::parameter_parsing_results*,
                                                                                      ::fast_io::vector<::uwvm::cmdline::parameter_parsing_results>&) noexcept
 {
 #if defined(UWVM_SUPPORT_INSTALL_PATH)
-    if(::uwvm::path::module_install_path_df.native_handle() == ::fast_io::dir_file{}.native_handle()) [[unlikely]]
+    if(::uwvm::path::module_install_path_df == ::fast_io::dir_file{}) 
     {
         ::uwvm::path::init_install_path(::uwvm::path::argv0);
     }
@@ -89,16 +89,22 @@
 #if defined(__wasm__)
                         u8"WASM"
     #if defined(__wasm32__)
-                        u8" 32"
+                        u8"32"
     #elif defined(__wasm64__)
-                        u8" 64"
+                        u8"64"
     #endif
 #elif defined(__alpha__)
                         u8"DEC Alpha"
 #elif defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
                         u8"AArch64"
+    #if defined(__AARCH_BIG_ENDIAN)
+                        u8"_BE"
+    #endif
 #elif defined(__arm__) || defined(_M_ARM)
                         u8"ARM"
+    #if defined(__ARM_BIG_ENDIAN)
+                        u8"EB"
+    #endif
 #elif defined(__x86_64__) || defined(_M_AMD64)
                         u8"x86_64"
 #elif defined(__i386__) || defined(_M_IX86)
@@ -276,7 +282,7 @@
     defined(_WIN32_WINDOWS)
                         u8"Microsoft Windows"
     #if defined(_WIN32_WINDOWS)
-                        u8", minimum system support: "
+                        u8": "
         #if _WIN32_WINDOWS >= 0x0490
                         u8"Windows ME"
         #elif _WIN32_WINDOWS >= 0x0410
@@ -285,7 +291,7 @@
                         u8"Windows 95"
         #endif
     #elif defined(_WIN32_WINNT)
-                        u8", minimum system support: "
+                        u8": "
         #if _WIN32_WINNT >= 0x0A00
                         u8"Windows 10"
         #elif _WIN32_WINNT >= 0x0603
@@ -300,6 +306,8 @@
                         u8"Windows Server 2003 with SP1, Windows XP with SP2"
         #elif _WIN32_WINNT >= 0x0501
                         u8"Windows Server 2003, Windows XP"
+        #elif _WIN32_WINNT >= 0x0500
+                        u8"Windows 2000"
         #endif
     #endif
 #elif defined(__MSDOS__)

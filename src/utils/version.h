@@ -6,6 +6,7 @@
 #include <compare>
 
 #include <fast_io.h>
+#include <fast_io_dsal/string_view.h>
 
 namespace uwvm
 {
@@ -87,10 +88,9 @@ namespace uwvm
     }
 
     template <::std::integral char_type>
-        requires (sizeof(char_type) == sizeof(char8_t))
     inline constexpr ::std::size_t print_reserve_size(::fast_io::io_reserve_type_t<char_type, version>) noexcept
     {
-        constexpr ::std::size_t real_size{print_reserve_size(::fast_io::io_reserve_type<char_type, ::std::uint_least32_t>)};
+        constexpr ::std::size_t real_size{::fast_io::pr_rsv_size<char_type, ::std::uint_least32_t>};
         constexpr ::std::size_t size{3 + 4 * real_size};
         return size;
     }
@@ -104,13 +104,14 @@ namespace uwvm
                                                                ::std::uint_least32_t z,
                                                                ::std::uint_least32_t state) noexcept
         {
-            char_type* curr_pos{print_reserve_define(::fast_io::io_reserve_type<char_type, ::std::uint_least32_t>, iter, x)};
-            *(curr_pos++) = static_cast<char_type>('.');
-            curr_pos = print_reserve_define(::fast_io::io_reserve_type<char_type, ::std::uint_least32_t>, curr_pos, y);
-            *(curr_pos++) = static_cast<char_type>('.');
-            curr_pos = print_reserve_define(::fast_io::io_reserve_type<char_type, ::std::uint_least32_t>, curr_pos, z);
-            *(curr_pos++) = static_cast<char_type>('.');
-            curr_pos = print_reserve_define(::fast_io::io_reserve_type<char_type, ::std::uint_least32_t>, curr_pos, state);
+            constexpr auto point{::fast_io::char_literal_v<u8'.', char_type>};
+            char_type* curr_pos{::fast_io::pr_rsv_to_iterator_unchecked(iter, x)};
+            *(curr_pos++) = point;
+            curr_pos = ::fast_io::pr_rsv_to_iterator_unchecked(curr_pos, y);
+            *(curr_pos++) = point;
+            curr_pos = ::fast_io::pr_rsv_to_iterator_unchecked(curr_pos, z);
+            *(curr_pos++) = point;
+            curr_pos = ::fast_io::pr_rsv_to_iterator_unchecked(curr_pos, state);
             return curr_pos;
         }
     }  // namespace details
@@ -123,12 +124,12 @@ namespace uwvm
 
 #if defined(UWVM_VERSION_X) && defined(UWVM_VERSION_Y) && defined(UWVM_VERSION_Z) && defined(UWVM_VERSION_S)
     inline constexpr version uwvm_version{UWVM_VERSION_X, UWVM_VERSION_Y, UWVM_VERSION_Z, UWVM_VERSION_S};
-    inline constexpr ::fast_io::mnp::basic_os_c_str_with_known_size<char8_t> git_fetch_head{::fast_io::mnp::os_c_str_arr(
+    inline constexpr ::fast_io::u8string_view git_fetch_head{
     #include "../../.tmp/git_commit_hash.h"
-        )};
+    };
 #else
     inline constexpr version uwvm_version{};
-    inline constexpr ::fast_io::mnp::basic_os_c_str_with_known_size<char8_t> git_fetch_head{::fast_io::mnp::os_c_str_arr(u8"No FETCH_HEAD information")};
+    inline constexpr ::fast_io::u8string_view git_fetch_head{u8"No FETCH_HEAD information"};
 #endif
 
 }  // namespace uwvm

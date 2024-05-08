@@ -40,7 +40,7 @@ option("min-win32-sys")
 	set_description("Minimum system required Minimum value for _WIN32_WINNT, _WIN32_WINDOWS and WINVER")
 	set_default("default")
 	set_showmenu(true)
-	set_values("default", "WIN10", "WINBLUE", "WIN8", "WIN7", "WS08", "VISTA", "WS03", "WINXP", "WINME", "WIN98", "WIN95")
+	set_values("default", "WIN10", "WINBLUE", "WIN8", "WIN7", "WS08", "VISTA", "WS03", "WINXP", "WIN2K", "WINME", "WIN98", "WIN95")
 option_end()
 
 option("cppstdlib")
@@ -65,12 +65,25 @@ option("sysroot")
 	set_showmenu(true)
 option_end()
 
+option("llvm-target")
+	set_default("default")
+	set_showmenu(true)
+option_end()
+
+option("timer")
+	set_default(false)
+	set_showmenu(true)
+	add_defines("UWVM_TIMER")
+option_end()
 
 function defopt()
 	set_languages("c11", "cxx23")
-	if not is_plat("msdosdjgpp") then
+
+	-- if not is_plat("msdosdjgpp") then
 		add_options("native")
-	end
+	-- end
+	add_options("timer")
+
 	set_exceptions("no-cxx")
 
 	local use_llvm_toolchain = get_config("use-llvm")
@@ -90,8 +103,19 @@ function defopt()
 		local sysroot_para = get_config("sysroot")
 		if sysroot_para ~= "default" and sysroot_para then
 			local sysroot_cvt = "--sysroot=" .. sysroot_para
-			add_cxflags(sysroot_cvt)
+			add_cxflags(sysroot_cvt, {force = true})
 			add_ldflags(sysroot_cvt, {force = true})
+		end
+	end
+
+	if not is_plat("wasm-wasi", "wasm-wasip1", "wasm-wasip2") then 
+		if use_llvm_toolchain then	
+			local sysroot_para = get_config("llvm-target")
+			if sysroot_para ~= "default" and sysroot_para then
+				local sysroot_cvt = "--target=" .. sysroot_para
+				add_cxflags(sysroot_cvt, {force = true})
+				add_ldflags(sysroot_cvt, {force = true})
+			end
 		end
 	end
 
@@ -160,6 +184,8 @@ function defopt()
 			add_defines("_WIN32_WINNT=0x0502")
 		elseif opt_name == "WINXP" then
 			add_defines("_WIN32_WINNT=0x0501")
+		elseif opt_name == "WIN2K" then
+			add_defines("_WIN32_WINNT=0x0500")
 		elseif opt_name == "WINME" then
 			add_defines("_WIN32_WINDOWS=0x0490")
 			add_defines("_WIN32_WINNT=0x0490")
@@ -222,6 +248,8 @@ function defopt()
 			add_defines("_WIN32_WINNT=0x0502")
 		elseif opt_name == "WINXP" then
 			add_defines("_WIN32_WINNT=0x0501")
+		elseif opt_name == "WIN2K" then
+			add_defines("_WIN32_WINNT=0x0500")
 		elseif opt_name == "WINME" then
 			add_defines("_WIN32_WINDOWS=0x0490")
 		elseif opt_name == "WIN98" then
@@ -241,8 +269,8 @@ function defopt()
 		end
 		
 		if is_mode("debug") and is_plat("linux") then
-			set_policy("build.sanitizer.address", true)
-			set_policy("build.sanitizer.leak", true)
+			--set_policy("build.sanitizer.address", true)
+			--set_policy("build.sanitizer.leak", true)
 		end
 
 		local csl_name = get_config("cppstdlib")
@@ -376,24 +404,24 @@ function defopt()
 		add_ldflags("-fuse-ld=lld")
 		if is_arch("wasm32") then
 			if is_plat("wasm-wasi") then
-				add_cxflags("--target=wasm32-wasi")
+				add_cxflags("--target=wasm32-wasi", {force = true})
 				add_ldflags("--target=wasm32-wasi", {force = true})
 			elseif is_plat("wasm-wasip1") then
-				add_cxflags("--target=wasm32-wasip1")
+				add_cxflags("--target=wasm32-wasip1", {force = true})
 				add_ldflags("--target=wasm32-wasip1", {force = true})
 			else
-				add_cxflags("--target=wasm32-wasip2")
+				add_cxflags("--target=wasm32-wasip2", {force = true})
 				add_ldflags("--target=wasm32-wasip2", {force = true})
 			end
 		elseif is_arch("wasm64") then
 			if is_plat("wasm-wasi") then
-				add_cxflags("--target=wasm64-wasi")
+				add_cxflags("--target=wasm64-wasi", {force = true})
 				add_ldflags("--target=wasm64-wasi", {force = true})
 			elseif is_plat("wasm-wasip1") then
-				add_cxflags("--target=wasm64-wasip1")
+				add_cxflags("--target=wasm64-wasip1", {force = true})
 				add_ldflags("--target=wasm64-wasip1", {force = true})
 			else
-				add_cxflags("--target=wasm64-wasip2")
+				add_cxflags("--target=wasm64-wasip2", {force = true})
 				add_ldflags("--target=wasm64-wasip2", {force = true})
 			end
 		end
@@ -465,15 +493,15 @@ target("uwvm")
 	set_kind("binary")
 	defopt()
 
-	add_includedirs("third-partys/fast_io/include/")
+	add_includedirs("third-parties/fast_io/include/")
 	add_includedirs("src/utils/")
 
 	if is_plat("windows", "mingw") then
 		add_files("src/utils/consolecp/set_native_console_cp.cpp")
 	end
 
-	add_files("src/clpara/parameters/**.cpp")
 	add_files("src/program/uwvm.cpp")
+	add_files("src/clpara/parameters/**.cpp")
 
 	if is_plat("windows", "mingw") then 
 		add_files("src/program/uwvm.rc")

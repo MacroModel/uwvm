@@ -107,7 +107,7 @@ namespace uwvm::wasm
         }
 #if 0  // future🦄
        // check 64-bit indexes
-        ::uwvm::check_index(table_count);
+        ::uwvm::wasm::check_index(table_count);
 #else
         if(table_count > 1) [[unlikely]]
         {

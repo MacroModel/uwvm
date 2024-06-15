@@ -102,21 +102,25 @@ namespace uwvm::wasm
                 // func
                 for(::std::size_t count{}; auto const t: wasmmod.importsec.func_types)
                 {
-                    ::fast_io::operations::print_freestanding<true>(::std::forward<s>(stm),
+                    ::fast_io::operations::print_freestanding<false>(::std::forward<s>(stm),
                                                                 u8" - "
                                                                 u8"func"
                                                                 u8"[",
                                                                 count++,
                                                                 u8"] sig=",
-                                                                t->extern_type.function - func_type_table_base,
-                                                                u8" <__imported_",
-                                                                ::fast_io::mnp::strvw(t->module_begin, t->module_end),
-                                                                u8"_",
-                                                                ::fast_io::mnp::strvw(t->name_begin, t->name_end),
-                                                                u8"> <- ",
-                                                                ::fast_io::mnp::strvw(t->module_begin, t->module_end),
-                                                                u8".",
-                                                                ::fast_io::mnp::strvw(t->name_begin, t->name_end));
+                                                                t->extern_type.function - func_type_table_base);
+                    if((t->custom_name_end - t->custom_name_begin) != 0)
+                    {
+                        ::fast_io::operations::print_freestanding<false>(::std::forward<s>(stm),
+                                                                         u8" <",
+                                                                         ::fast_io::mnp::strvw(t->custom_name_begin, t->custom_name_end),
+                                                                         u8">");
+                    }
+                    ::fast_io::operations::print_freestanding<true>(::std::forward<s>(stm),
+                                                                    u8" <- ",
+                                                                    ::fast_io::mnp::strvw(t->module_begin, t->module_end),
+                                                                    u8".",
+                                                                    ::fast_io::mnp::strvw(t->name_begin, t->name_end));
                 }
 
                 // table
@@ -225,11 +229,11 @@ namespace uwvm::wasm
                                                                 count++,
                                                                 u8"] sig=",
                                                                 t.func_type - func_type_table_base);
-                    if((t.name_end - t.name_begin) != 0)
+                    if((t.custom_name_end - t.custom_name_begin) != 0)
                     {
                         ::fast_io::operations::print_freestanding<false>(::std::forward<s>(stm),
                                                                          u8" <",
-                                                                         ::fast_io::mnp::strvw(t.name_begin, t.name_end),
+                                                                         ::fast_io::mnp::strvw(t.custom_name_begin, t.custom_name_end),
                                                                          u8">");
                     }
                     ::fast_io::operations::print_freestanding<true>(::std::forward<s>(stm));
@@ -359,7 +363,7 @@ namespace uwvm::wasm
                             ::fast_io::operations::print_freestanding<true>(::std::forward<s>(stm), u8"ref_func=function[", t.initializer.ref, u8"]");
                             break;
                         }
-                        case ::uwvm::wasm::op_basic::simd_prefix:
+                        case ::uwvm::wasm::op_basic::simd:
                         {
                             ::fast_io::operations::print_freestanding<true>(::std::forward<s>(stm), u8"v128=i8x16: ", i8x16(t.initializer.v128));
                             break;
@@ -415,7 +419,7 @@ namespace uwvm::wasm
                 {
                     ::fast_io::operations::print_freestanding<false>(::std::forward<s>(stm), 
                                                                      u8" - "
-                                                                     u8"memroy" 
+                                                                     u8"memory" 
                                                                      u8"[",
                                                                      t->index, 
                                                                      u8"] -> \"",
@@ -499,6 +503,65 @@ namespace uwvm::wasm
                         ::fast_io::operations::print_freestanding<true>(::std::forward<s>(stm), u8"  - elem[", elem_counter++, u8"] = ref.func:", e);
                     }
                 }
+            }
+
+            // code
+            if(wasmmod.codesec.sec_begin) [[likely]]
+            {
+                ::fast_io::operations::print_freestanding<false>(::std::forward<s>(stm),
+                                                                 u8"\n" u8"Code[",
+                                                                 wasmmod.codesec.code_count,
+                                                                 u8"] (start=",
+                                                                 ::fast_io::mnp::hex0x<true>(wasmmod.codesec.sec_begin - wasm_file_begin),
+                                                                 u8" end=",
+                                                                 ::fast_io::mnp::hex0x<true>(wasmmod.codesec.sec_end - wasm_file_begin),
+                                                                 u8" size=",
+                                                                 ::fast_io::mnp::hex0x<true>(wasmmod.codesec.sec_end - wasmmod.codesec.sec_begin),
+                                                                 u8"):\n");
+
+                for(::std::size_t code_count{wasmmod.importsec.func_types.size()}; auto const& t: wasmmod.codesec.bodies)
+                {
+                    ::fast_io::operations::print_freestanding<true>(::std::forward<s>(stm), u8" - " u8"func" u8"[", code_count++, u8"] size=", t.body_size);
+                }
+            }
+
+            // data
+            if(wasmmod.datasec.sec_begin) [[likely]]
+            {
+                ::fast_io::operations::print_freestanding<false>(::std::forward<s>(stm),
+                                                                 u8"\n" u8"Data[",
+                                                                 wasmmod.datasec.count,
+                                                                 u8"] (start=",
+                                                                 ::fast_io::mnp::hex0x<true>(wasmmod.datasec.sec_begin - wasm_file_begin),
+                                                                 u8" end=",
+                                                                 ::fast_io::mnp::hex0x<true>(wasmmod.datasec.sec_end - wasm_file_begin),
+                                                                 u8" size=",
+                                                                 ::fast_io::mnp::hex0x<true>(wasmmod.datasec.sec_end - wasmmod.datasec.sec_begin),
+                                                                 u8"):\n");
+
+                for(::std::size_t count{}; auto const& t: wasmmod.datasec.entries)
+                {
+                    ::fast_io::operations::print_freestanding<true>(::std::forward<s>(stm),
+                                                                    u8" - " u8"segment" u8"[", 
+                                                                    count++,
+                                                                    u8"] memory=",
+                                                                    t.index,
+                                                                    u8" size=",
+                                                                    t.size,
+                                                                    u8" - init i32=",
+                                                                    t.offset.i32);
+                }
+            }
+
+            // custom
+            for(auto const& t: wasmmod.cussecs)
+            {
+                ::fast_io::operations::print_freestanding<false>(::std::forward<s>(stm),
+                                                                    u8"\n"
+                                                                    u8"Custom:\n"
+                                                                    u8" - name: \"", 
+                                                                    ::fast_io::mnp::strvw(t.name_begin,t.name_end), 
+                                                                    u8"\"\n");
             }
         }
         else if constexpr(::std::same_as<char_type, char16_t>) {}

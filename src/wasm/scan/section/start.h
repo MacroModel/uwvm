@@ -48,6 +48,10 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(begin - wasmmod.module_begin),
+                                u8") "
                                 u8"Duplicate WASM Section: Table."
                                 u8"\n"
                                 u8"\033[0m"
@@ -59,7 +63,7 @@ namespace uwvm::wasm
 
         // get function index
         ::std::size_t index{};
-        auto [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(begin),
+        auto const [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(begin),
                                                   reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                   ::fast_io::mnp::leb128_get(index))};
         switch(err)
@@ -84,6 +88,10 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                        
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(begin - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid table length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -110,6 +118,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(begin - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid function index."
                                 u8"\n"
                                 u8"\033[0m"
@@ -137,6 +148,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(begin - wasmmod.module_begin),
+                                u8") "
                                 u8"Contains invalid information."
                                 u8"\n"
                                 u8"\033[0m"

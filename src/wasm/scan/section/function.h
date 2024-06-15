@@ -48,6 +48,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(begin - wasmmod.module_begin),
+                                u8") "
                                 u8"The type section must appear before function section."
                                 u8"\n"
                                 u8"\033[0m"
@@ -74,6 +77,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(begin - wasmmod.module_begin),
+                                u8") "
                                 u8"Duplicate WASM Section: Function."
                                 u8"\n"
                                 u8"\033[0m"
@@ -88,7 +94,7 @@ namespace uwvm::wasm
 
         // get function size
         ::std::size_t function_count{};
-        auto [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+        auto const [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                   reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                   ::fast_io::mnp::leb128_get(function_count))};
         switch(err)
@@ -113,6 +119,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid function length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -155,6 +164,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"The number of functions resolved does not match the actual number."
                                 u8"\n"
                                 u8"\033[0m"
@@ -163,7 +175,7 @@ namespace uwvm::wasm
             }
 
             ::std::size_t type_index_len{};
-            auto [next_type_index, err_type_index]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+            auto const [next_type_index, err_type_index]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                                             reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                                             ::fast_io::mnp::leb128_get(type_index_len))};
             switch(err_type_index)
@@ -188,6 +200,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid index length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -215,6 +230,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid type index."
                                 u8"\n"
                                 u8"\033[0m"
@@ -245,6 +263,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"The number of functions resolved does not match the actual number."
                                 u8"\n"
                                 u8"\033[0m"

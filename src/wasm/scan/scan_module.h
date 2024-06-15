@@ -85,6 +85,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - begin),
+                                u8") "
                                 u8"Illegal WASM file format.\n"
                                 u8"\033[0m"
                                 u8"Terminate.\n\n");
@@ -116,6 +119,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - begin),
+                                u8") "
                                 u8"No WASM sections found.\n"
                                 u8"\033[0m"
                                 u8"Terminate.\n\n");
@@ -132,9 +138,9 @@ namespace uwvm::wasm
             // get section length
             ++curr;
             ::std::size_t sec_len{};
-            auto [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
-                                                      reinterpret_cast<char8_t_const_may_alias_ptr>(end),
-                                                      ::fast_io::mnp::leb128_get(sec_len))};
+            auto const [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+                                                            reinterpret_cast<char8_t_const_may_alias_ptr>(end),
+                                                            ::fast_io::mnp::leb128_get(sec_len))};
             switch(err)
             {
                 case ::fast_io::parse_code::ok: break;
@@ -157,6 +163,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - begin),
+                                u8") "
                                 u8"Invalid section length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -190,6 +199,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - begin),
+                                u8") "
                                 u8"Invalid section length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -204,7 +216,11 @@ namespace uwvm::wasm
             auto const sec_type{static_cast<::uwvm::wasm::section_type>(sec_num)};
             switch(sec_type)
             {
-                case ::uwvm::wasm::section_type::custom_sec: break;
+                case ::uwvm::wasm::section_type::custom_sec:
+                {
+                    ::uwvm::wasm::scan_custom_section(wasmmod, curr, sec_end);
+                    break;
+                }
                 case ::uwvm::wasm::section_type::type_sec:
                 {
                     ::uwvm::wasm::scan_type_section(wasmmod, curr, sec_end);
@@ -250,8 +266,16 @@ namespace uwvm::wasm
                     ::uwvm::wasm::scan_element_section(wasmmod, curr, sec_end);
                     break;
                 }
-                case ::uwvm::wasm::section_type::code_sec: break;
-                case ::uwvm::wasm::section_type::data_sec: break;
+                case ::uwvm::wasm::section_type::code_sec:
+                {
+                    ::uwvm::wasm::scan_code_section(wasmmod, curr, sec_end);
+                    break;
+                }
+                case ::uwvm::wasm::section_type::data_sec:
+                {
+                    ::uwvm::wasm::scan_data_section(wasmmod, curr, sec_end);
+                    break;
+                }
                 case ::uwvm::wasm::section_type::data_count_sec: break;
                 case ::uwvm::wasm::section_type::tag_sec: break;
                 default:
@@ -273,6 +297,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - begin),
+                                u8") "
                                 u8"Unknown WASM section: ",
                                 ::fast_io::mnp::hex0x<true>(sec_num),
                                 u8"\n"
@@ -305,6 +332,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - begin),
+                                u8") "
                                 u8"Unable to read leb128."
                                 u8"\n"
                                 u8"\033[0m"

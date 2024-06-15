@@ -59,6 +59,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(begin - wasmmod.module_begin),
+                                u8") "
                                 u8"Duplicate WASM Section: Memory."
                                 u8"\n"
                                 u8"\033[0m"
@@ -74,7 +77,7 @@ namespace uwvm::wasm
 
         // get function size
         ::std::size_t mem_count{};
-        auto [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+        auto const [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                   reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                   ::fast_io::mnp::leb128_get(mem_count))};
         switch(err)
@@ -99,6 +102,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid table length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -106,35 +112,39 @@ namespace uwvm::wasm
                     ::fast_io::fast_terminate();
                 }
         }
-#if 0  // future🦄
-       // check 64-bit indexes
-        ::uwvm::check_index(table_count);
-#else
+
         if(mem_count > 1) [[unlikely]]
         {
-            ::fast_io::io::perr(::uwvm::u8err,
+            if(::uwvm::features::enable_multi_memory) { ::uwvm::wasm::check_index(mem_count); }
+            else [[unlikely]]
+            {
+                ::fast_io::io::perr(::uwvm::u8err,
                                 u8"\033[0m"
-    #ifdef __MSDOS__
+#ifdef __MSDOS__
                                 u8"\033[37m"
-    #else
+#else
                                 u8"\033[97m"
-    #endif
+#endif
                                 u8"uwvm: "
                                 u8"\033[31m"
                                 u8"[fatal] "
                                 u8"\033[0m"
-    #ifdef __MSDOS__
+#ifdef __MSDOS__
                                 u8"\033[37m"
-    #else
+#else
                                 u8"\033[97m"
-    #endif
+#endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"In the MVP, the number of memories must be no more than 1."
                                 u8"\n"
                                 u8"\033[0m"
                                 u8"Terminate.\n\n");
-            ::fast_io::fast_terminate();
+                ::fast_io::fast_terminate();
+            }
         }
-#endif
+
         wasmmod.memorysec.memory_count = mem_count;
         wasmmod.memorysec.types.clear();
         wasmmod.memorysec.types.reserve(mem_count);
@@ -163,6 +173,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"The number of memories resolved does not match the actual number."
                                 u8"\n"
                                 u8"\033[0m"
@@ -182,7 +195,7 @@ namespace uwvm::wasm
 
                 // get type index
                 ::std::size_t limit_min{};
-                auto [next_lmin, err_lmin]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+                auto const [next_lmin, err_lmin]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                                     reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                                     ::fast_io::mnp::leb128_get(limit_min))};
                 switch(err_lmin)
@@ -207,6 +220,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid limit length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -229,7 +245,7 @@ namespace uwvm::wasm
 
                 // get type index
                 ::std::size_t limit_min{};
-                auto [next_lmin, err_lmin]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+                auto const [next_lmin, err_lmin]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                                     reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                                     ::fast_io::mnp::leb128_get(limit_min))};
                 switch(err_lmin)
@@ -254,6 +270,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid limit length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -267,7 +286,7 @@ namespace uwvm::wasm
                 curr = reinterpret_cast<::std::byte const*>(next_lmin);
 
                 ::std::size_t limit_max{};
-                auto [next_lmax, err_lmax]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+                auto const [next_lmax, err_lmax]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                                     reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                                     ::fast_io::mnp::leb128_get(limit_max))};
                 switch(err_lmax)
@@ -292,10 +311,13 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid limit length."
                                 u8"\n"
                                 u8"\033[0m"
-                                u8"Termaxate.\n\n");
+                                u8"Terminate.\n\n");
                             ::fast_io::fast_terminate();
                         }
                 }
@@ -321,10 +343,13 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Initial > Maximum."
                                 u8"\n"
                                 u8"\033[0m"
-                                u8"Termaxate.\n\n");
+                                u8"Terminate.\n\n");
                     ::fast_io::fast_terminate();
                 }
 
@@ -350,6 +375,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid flags."
                                 u8"\n"
                                 u8"\033[0m"
@@ -377,12 +405,14 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"The number of memories resolved does not match the actual number."
                                 u8"\n"
                                 u8"\033[0m"
                                 u8"Terminate.\n\n");
             ::fast_io::fast_terminate();
         }
-
     }
 }  // namespace uwvm::wasm

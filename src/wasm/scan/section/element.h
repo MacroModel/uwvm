@@ -49,6 +49,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(begin - wasmmod.module_begin),
+                                u8") "
                                 u8"Duplicate WASM Section: Element."
                                 u8"\n"
                                 u8"\033[0m"
@@ -63,7 +66,7 @@ namespace uwvm::wasm
 
         // get elem size
         ::std::size_t elem_count{};
-        auto [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+        auto const [next, err]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                   reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                   ::fast_io::mnp::leb128_get(elem_count))};
         switch(err)
@@ -88,6 +91,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid table length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -132,6 +138,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"The number of elements resolved does not match the actual number."
                                 u8"\n"
                                 u8"\033[0m"
@@ -140,7 +149,7 @@ namespace uwvm::wasm
             }
 
             ::std::size_t index{};
-            auto [next_index, err_index]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+            auto const [next_index, err_index]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                                   reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                                   ::fast_io::mnp::leb128_get(index))};
             switch(err_index)
@@ -165,6 +174,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid table length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -174,7 +186,7 @@ namespace uwvm::wasm
             }
 
 #if 0  // future🦄
-       // check 64-bit indexes
+            // check 64-bit indexes
             ::uwvm::wasm::check_index(index);
 #else
             if(index > 1) [[unlikely]]
@@ -195,6 +207,9 @@ namespace uwvm::wasm
     #else
                                 u8"\033[97m"
     #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"In the MVP, the index of tables must be no more than 1."
                                 u8"\n"
                                 u8"\033[0m"
@@ -228,6 +243,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid i32 initializer expression that calculates the offset of a placement element."
                                 u8"\n"
                                 u8"\033[0m"
@@ -239,7 +257,7 @@ namespace uwvm::wasm
             ++curr;
 
             ::std::int_least32_t i32val{};
-            auto [next_i32, err_i32]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+            auto const [next_i32, err_i32]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                               reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                               ::fast_io::mnp::leb128_get(i32val))};
             switch(err_i32)
@@ -264,6 +282,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid varint32."
                                 u8"\n"
                                 u8"\033[0m"
@@ -296,6 +317,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"No terminator found."
                                 u8"\n"
                                 u8"\033[0m"
@@ -307,7 +331,7 @@ namespace uwvm::wasm
 
             // num_elem
             ::std::size_t num_elem{};
-            auto [next_num_elem, err_num_elem]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+            auto const [next_num_elem, err_num_elem]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                                         reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                                         ::fast_io::mnp::leb128_get(num_elem))};
             switch(err_index)
@@ -332,6 +356,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid table length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -342,15 +369,15 @@ namespace uwvm::wasm
 
             ::uwvm::wasm::check_index(num_elem);
             est.elem_count = num_elem;
+            est.elems.reserve(num_elem);
 
             curr = reinterpret_cast<::std::byte const*>(next_num_elem);
 
             // get num elems
-            est.elems.reserve(num_elem);
             for(::std::size_t i{}; i < num_elem; ++i)
             {
                 ::std::size_t sequence{};
-                auto [next_sequence, err_sequence]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+                auto const [next_sequence, err_sequence]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
                                                                             reinterpret_cast<char8_t_const_may_alias_ptr>(end),
                                                                             ::fast_io::mnp::leb128_get(sequence))};
                 switch(err_sequence)
@@ -375,6 +402,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid table length."
                                 u8"\n"
                                 u8"\033[0m"
@@ -401,6 +431,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"Invalid function index."
                                 u8"\n"
                                 u8"\033[0m"
@@ -434,6 +467,9 @@ namespace uwvm::wasm
 #else
                                 u8"\033[97m"
 #endif
+                                u8"(offset=",
+                                ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                u8") "
                                 u8"The number of elements resolved does not match the actual number."
                                 u8"\n"
                                 u8"\033[0m"

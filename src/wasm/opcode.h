@@ -5,6 +5,8 @@
 
 namespace uwvm::wasm
 {
+    // https://pengowray.github.io/wasm-ops/
+    
     // mvp or prefix
     enum class op_basic : ::uwvm::wasm::op_basic_type  // u8
     {
@@ -55,7 +57,8 @@ namespace uwvm::wasm
         ref_is_null = 0xd1,
 
         // Overloaded
-        select = 0x1c,
+        select = 0x1b,
+        select_t = 0x1c,
 
         // Scalar load/store instructions
         i32_load = 0x28,
@@ -246,7 +249,7 @@ namespace uwvm::wasm
         simd_interleaved = 0xff,
         simd = 0xfd,
         reference_types = 0xfc,
-        bulkMemory = 0xfc,
+        bulk_memory = 0xfc,
     };
 
     enum class op_exten_simd_interleaved : ::uwvm::wasm::op_exten_type  // 0xff
@@ -681,7 +684,6 @@ namespace uwvm::wasm
         // Bulk memory/table operators
         data_drop = 0x09,
         elem_drop = 0x0d
-
     };
 
     struct opcode
@@ -738,7 +740,3 @@ namespace uwvm::wasm
     }
 }  // namespace uwvm::wasm
 
-/*
- * to do
- *	0xfc00, i32_trunc_sat_f32_s
- */

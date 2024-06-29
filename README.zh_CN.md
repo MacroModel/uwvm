@@ -51,7 +51,7 @@ $ uwvm <param1> <param2> ... --run <file> <argv1> <argv2> ...
 ```
 * 运行模式
 ```bash
---mode [objdump(默认)]
+--mode [objdump(默认), int]
 ```
 * 加载 WASM ABI (默认自动检测)
 ```bash
@@ -76,10 +76,11 @@ $ uwvm <param1> <param2> ... --run <file> <argv1> <argv2> ...
 | [Fixed-width SIMD](https://github.com/WebAssembly/simd/blob/master/proposals/simd/SIMD.md)                                                         |  ```--enable-fixed-width-simd```   |
 | [Extended constant expressions](https://github.com/WebAssembly/extended-const/blob/master/proposals/extended-const/Overview.md)                    |  :x:                               |
 | [Tail calls](https://github.com/WebAssembly/tail-call/blob/master/proposals/tail-call/Overview.md)                                                 |  :x:                               |
-| [Threads and atomics](https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md)                                            |  :x:                               |
+| [Threads and atomics](https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md)                                            |  ```--enable-thread```             |
 | [Exception handling](https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md)                     |  ```--enable-exception-handling``` |
 | [JS Promise Integration](https://github.com/WebAssembly/js-promise-integration)                                                                    |  N/A                               |
 | [Memory64](https://github.com/WebAssembly/memory64/blob/master/proposals/memory64/Overview.md)                                                     |  ```--enable-memory64```           |
+| [Custom Page Sizes](https://github.com/WebAssembly/custom-page-sizes/blob/main/proposals/custom-page-sizes/Overview.md)                            |  ```--enable-custom-page-sizes```  |
 | [Type reflection](https://github.com/WebAssembly/js-types/blob/main/proposals/js-types/Overview.md)                                                |  :x:                               |
 
 ### 多平台支持
@@ -117,7 +118,7 @@ $ xmake f -m [release|releasedbg|debug] -p [windows|mingw|linux|sun|msdosdjgpp|b
 ```bash
 --min-win32-sys=[WINME|WIN98|WIN95]
 ```
-* 使用llvm工具链
+* 使用llvm工具链 (部分使用 gcc 软连接 clang 的平台必须加上这个选项，比如 macos 与 android )
 ```bash 
 --use-llvm=y|n(default)
 ```
@@ -140,6 +141,10 @@ $ xmake f -m [release|releasedbg|debug] -p [windows|mingw|linux|sun|msdosdjgpp|b
 * 记录每一步消耗的时间
 ```bash 
 --timer=y|n(default)
+```
+* 使用mimalloc作为默认分配器
+```bash 
+--use-mimalloc=y|n(default)
 ```
 * 启用清洁器
 ```bash

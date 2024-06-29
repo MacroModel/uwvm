@@ -261,14 +261,17 @@
     #endif
     #if 0
         #if defined(__AVX512BF16__)
-                          u8"AVX512BF16 "
+                        u8"AVX512BF16 "
         #endif
         #if defined(__AVX512FP16__)
-                          u8"AVX512FP16 "
+                        u8"AVX512FP16 "
         #endif
     #endif
     #if defined(__AVX512VBMI__)
                         u8"AVX512VBMI "
+    #endif
+    #if defined(__APX_F__)
+                        u8"APX "
     #endif
 #elif defined(__VECTOR4DOUBLE__) || defined(__VSX__) || (defined(__ALTIVEC__) || defined(__VEC__))
                         u8"\nSIMD support: PPC SIMD"
@@ -282,7 +285,7 @@
     defined(_WIN32_WINDOWS)
                         u8"Microsoft Windows"
     #if defined(_WIN32_WINDOWS)
-                        u8": "
+                        u8" - "
         #if _WIN32_WINDOWS >= 0x0490
                         u8"Windows ME"
         #elif _WIN32_WINDOWS >= 0x0410
@@ -291,7 +294,7 @@
                         u8"Windows 95"
         #endif
     #elif defined(_WIN32_WINNT)
-                        u8": "
+                        u8" - "
         #if _WIN32_WINNT >= 0x0A00
                         u8"Windows 10"
         #elif _WIN32_WINNT >= 0x0603

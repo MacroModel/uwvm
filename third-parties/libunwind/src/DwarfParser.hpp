@@ -13,6 +13,22 @@
 #define __DWARF_PARSER_HPP__
 
 #include <inttypes.h>
+
+
+// fix x86_64-linux-gnu(2.17) compile error
+#ifndef PRIx64
+#define PRIx64 "llx"
+#endif
+#ifndef PRIu64
+#define PRIu64 "llu"
+#endif
+#ifndef PRId64
+#define PRId64 "lld" 
+#endif
+#ifndef PRIu8
+#define PRIu8 "hhu"
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

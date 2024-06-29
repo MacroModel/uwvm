@@ -6,7 +6,7 @@ set_version("1.0.0")
 add_defines("UWVM_VERSION_X=1")
 add_defines("UWVM_VERSION_Y=0")
 add_defines("UWVM_VERSION_Z=0")
-add_defines("UWVM_VERSION_S=0")
+add_defines("UWVM_VERSION_S=1")
 
 set_allowedplats("windows", "mingw", "linux", "sun", "msdosdjgpp", "unix", "bsd", "freebsd", "dragonflybsd", "netbsd", "openbsd", "macosx", "iphoneos", "watchos", "wasm-wasi", "wasm-wasip1", "wasm-wasip2", "cross")
 
@@ -76,6 +76,18 @@ option("timer")
 	add_defines("UWVM_TIMER")
 option_end()
 
+option("use-mimalloc")
+	set_default(false)
+	set_showmenu(true)
+option_end()
+
+option("uwvm-test")
+	set_default(false)
+	set_showmenu(true)
+	add_defines("UWVM_TEST")
+option_end()
+
+
 function defopt()
 	set_languages("c11", "cxx23")
 
@@ -83,6 +95,7 @@ function defopt()
 		add_options("native")
 	-- end
 	add_options("timer")
+	add_options("uwvm-test")
 
 	set_exceptions("no-cxx")
 
@@ -201,7 +214,7 @@ function defopt()
 			set_extension(".exe")
 		end
 
-		add_cxflags("-fno-rtti")
+		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
 		add_cxflags("-fno-asynchronous-unwind-tables")
 		if is_mode("release", "releasedbg") then
@@ -258,7 +271,7 @@ function defopt()
 		end
 
 	elseif is_plat("linux") then
-		add_cxflags("-fno-rtti")
+		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
 		add_cxflags("-fno-asynchronous-unwind-tables")
 		if is_mode("release", "releasedbg") then
@@ -297,8 +310,11 @@ function defopt()
 
 		add_syslinks("dl")
 
+		add_cxflags("-pthread",{force = true})
+		add_ldflags("-pthread",{force = true})
+
 	elseif is_plat("msdosdjgpp") then
-		add_cxflags("-fno-rtti")
+		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
 		add_cxflags("-fno-asynchronous-unwind-tables")
 		if is_mode("release", "releasedbg") then
@@ -323,7 +339,7 @@ function defopt()
 		end
 
 	elseif is_plat("unix", "bsd", "freebsd", "dragonflybsd", "netbsd", "openbsd", "sun") then
-		add_cxflags("-fno-rtti")
+		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
 		add_cxflags("-fno-asynchronous-unwind-tables")
 		if is_mode("release", "releasedbg") then
@@ -347,8 +363,11 @@ function defopt()
 			add_ldflags("-static")
 		end
 
+		add_cxflags("-pthread",{force = true})
+		add_ldflags("-pthread",{force = true})
+
 	elseif is_plat("macosx", "iphoneos", "watchos") then -- unknown-apple-darwin
-		add_cxflags("-fno-rtti")
+		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
 		add_cxflags("-fno-asynchronous-unwind-tables")
 		if is_mode("release", "releasedbg") then
@@ -372,10 +391,13 @@ function defopt()
 			add_ldflags("-static")
 		end
 
+		add_cxflags("-pthread",{force = true})
+		add_ldflags("-pthread",{force = true})
+
 	elseif is_plat("wasm-wasi", "wasm-wasip1", "wasm-wasip2") then -- wasm-wasi is equivalent to wasm-wasip1
 		set_extension(".wasm")
 
-		add_cxflags("-fno-rtti")
+		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
 		add_cxflags("-fno-asynchronous-unwind-tables")
 		if is_mode("release", "releasedbg") then
@@ -426,7 +448,7 @@ function defopt()
 		end
 
 	elseif is_plat("cross") then
-		add_cxflags("-fno-rtti")
+		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
 		add_cxflags("-fno-asynchronous-unwind-tables")
 		if is_mode("release", "releasedbg") then
@@ -492,21 +514,59 @@ target("uwvm")
 	set_kind("binary")
 	defopt()
 
+	-- libunwind
+	if not (is_plat("windows") or is_plat("msdosdjgpp")) then
+		add_deps("unwind")
+		add_includedirs("third-parties/libunwind/include/")
+	end
+
+	-- mimalloc
+	local use_mimalloc = get_config("use-mimalloc")
+	if use_mimalloc then	
+		if not (is_plat("msdosdjgpp")) then
+			add_defines("FAST_IO_USE_MIMALLOC")
+			add_includedirs("third-parties/mimalloc/include/")
+			add_files("third-parties/mimalloc/src/static.c")
+			add_files("src/utils/new-delete/override.cpp")
+		end
+	end
+
+	-- fast_io
 	add_includedirs("third-parties/fast_io/include/")
+
+	-- uwvm *.h
 	add_includedirs("src/utils/")
 
+	-- win32
 	if is_plat("windows", "mingw") then
 		add_files("src/utils/consolecp/set_native_console_cp.cpp")
 	end
 
+	-- uwvm *.cpp
 	add_files("src/program/uwvm.cpp")
 	add_files("src/clpara/parameters/**.cpp")
+	add_files("src/vm/interpreter/func/**.cpp")
+	add_files("src/vm/interpreter/tls.cpp") -- duplicate symbol: thread-local initialization routine 
 
 	if is_plat("windows", "mingw") then 
 		add_files("src/program/uwvm.rc")
 	end
 target_end()
 
+if not (is_plat("windows") or is_plat("msdosdjgpp"))then
+	target("unwind")
+		set_kind("static")
+		defopt()
+
+		add_defines("_LIBUNWIND_IS_NATIVE_ONLY")
+
+		add_includedirs("third-parties/libunwind/include/")
+
+		add_files("third-parties/libunwind/src/**.cpp")
+		add_files("third-parties/libunwind/src/**.c")
+		add_files("third-parties/libunwind/src/**.S")	
+	target_end()
+end
 
 --
 -- If you want to known more usage about xmake, please see https://xmake.io

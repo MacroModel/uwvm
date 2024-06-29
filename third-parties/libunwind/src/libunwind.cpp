@@ -30,6 +30,14 @@
 #include "AddressSpace.hpp"
 #include "UnwindCursor.hpp"
 
+#ifndef PRIxPTR
+#if __WORDSIZE == 64
+#define PRIxPTR "lx"
+#else
+#define PRIxPTR "x"
+#endif
+#endif
+
 using namespace libunwind;
 
 /// internal object to represent this processes address space

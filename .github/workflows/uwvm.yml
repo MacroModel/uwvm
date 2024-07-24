@@ -43,7 +43,7 @@ jobs:
           tar -xf wasm-sysroots.tar.xz
       - name: Build-Default-wasm32-wasip1
         run: |
-          xmake f -p wasm-wasip1 -a wasm32 -m debug --use-llvm=y --sdk=`pwd`/x86_64-pc-linux-gnu/ --sysroot=`pwd`/wasm-sysroots/wasm-sysroot/wasm32-wasip1/
+          xmake f -p wasm-wasip1 -a wasm32 -m debug --use-llvm=y --sdk=`pwd`/x86_64-pc-linux-gnu/llvm/ --sysroot=`pwd`/wasm-sysroots/wasm-sysroot/wasm32-wasip1/
           xmake -v
           xmake install -o `pwd`/uwvm-install/
       - name: Test-Default-wasm32-wasip1

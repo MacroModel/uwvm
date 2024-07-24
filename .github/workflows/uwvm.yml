@@ -41,7 +41,7 @@ jobs:
           tar -xf x86_64-pc-linux-gnu.tar.xz
           wget https://github.com/trcrsired/llvm-releases/releases/download/llvm20-20240723/wasm-sysroots.tar.xz
           tar -xf wasm-sysroots.tar.xz
-          `pwd`/x86_64-pc-linux-gnu/llvm/clang -v
+          `pwd`/x86_64-pc-linux-gnu/llvm/bin/clang -v
       - name: Build-Default-wasm32-wasip1
         run: |
           xmake f -p wasm-wasip1 -a wasm32 -m debug --use-llvm=y --sdk=`pwd`/x86_64-pc-linux-gnu/llvm/ --sysroot=`pwd`/wasm-sysroots/wasm-sysroot/wasm32-wasip1/

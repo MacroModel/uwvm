@@ -35,3 +35,16 @@ jobs:
       - name: Test-UWVM-TEST-x86_64-linux-gnu
         run: |
           xmake run uwvm
+      - name: Prepare-Default-wasm32-wasip1
+        run: |
+          wget https://github.com/trcrsired/llvm-releases/releases/download/llvm20-20240723/wasm-sysroots.tar.xz
+          tar -xf wasm-sysroots.tar.xz
+      - name: Build-Default-wasm32-wasip1
+        run: |
+          xmake f -p wasm-wasip1 -a wasm32 -m debug --sysroot=`pwd`/wasm-sysroots/wasm-sysroot/ --cxflags=-I`pwd`/wasm-sysroots/wasm-sysroot/include/wasm32-wasip1/c++/v1/
+          xmake -v
+          xmake install -o `pwd`/uwvm-install/
+      - name: Test-Default-wasm32-wasip1
+        run: |
+          `pwd`/uwvm-install/bin/uwvm -r `pwd`/uwvm-install/bin/uwvm.wasm -v
+          

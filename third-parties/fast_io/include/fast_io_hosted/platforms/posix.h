@@ -522,7 +522,6 @@ inline constexpr posix_at_entry at_fdcwd() noexcept
 
 #endif
 
-#if (!defined(__NEWLIB__) || defined(__CYGWIN__)) && (!defined(_WIN32) || defined(__WINE__))
 namespace details
 {
 
@@ -708,7 +707,7 @@ inline posix_file_status fstat_impl(int fd)
 #else
 	struct stat st;
 #endif
-	if (
+	if (::fast_io::noexcept_call(
 #if (defined(_WIN32) && !defined(__WINE__) && !defined(__BIONIC__)) && !defined(__CYGWIN__)
 #if (!defined(__MINGW32__) || __has_include(<_mingw_stat64.h>))
 		_fstat64
@@ -720,7 +719,7 @@ inline posix_file_status fstat_impl(int fd)
 #else
 		fstat
 #endif
-		(fd, __builtin_addressof(st)) < 0)
+		, fd, __builtin_addressof(st)) < 0)
 		throw_posix_error();
 	return struct_stat_to_posix_file_status(st);
 }
@@ -736,8 +735,6 @@ inline posix_file_status status(basic_posix_family_io_observer<family, ch_type> 
 	return details::fstat_impl(piob.fd);
 #endif
 }
-
-#endif
 
 #if (defined(_WIN32) && !defined(__WINE__) && !defined(__BIONIC__)) && !defined(__CYGWIN__)
 template <::fast_io::posix_family family, ::std::integral ch_type>
@@ -821,14 +818,17 @@ inline int my_posix_openat(int, char const *, int, mode_t)
 	}
 }
 #else
+
+extern int my_posix_openat_noexcept(int fd, const char* path, int aflag, ... /*mode_t mode*/) noexcept __asm__("openat");
+
 template <bool always_terminate = false>
 inline int my_posix_openat(int dirfd, char const *pathname, int flags, mode_t mode)
 {
 	int fd{
-#if defined(__linux__)
+#if defined(__linux__) && defined(__NR_openat)
 		system_call<__NR_openat, int>
 #else
-		::openat
+		my_posix_openat_noexcept
 #endif
 		(dirfd, pathname, flags, mode)};
 	system_call_throw_error<always_terminate>(fd);

@@ -8,7 +8,7 @@ add_defines("UWVM_VERSION_Y=0")
 add_defines("UWVM_VERSION_Z=0")
 add_defines("UWVM_VERSION_S=1")
 
-set_allowedplats("windows", "mingw", "linux", "sun", "msdosdjgpp", "unix", "bsd", "freebsd", "dragonflybsd", "netbsd", "openbsd", "macosx", "iphoneos", "watchos", "wasm-wasi", "wasm-wasip1", "wasm-wasip2", "cross")
+set_allowedplats("windows", "mingw", "linux", "sun", "msdosdjgpp", "unix", "bsd", "freebsd", "dragonflybsd", "netbsd", "openbsd", "macosx", "iphoneos", "watchos", "wasm-wasi", "wasm-wasip1", "wasm-wasip2", "wasm-wasi-threads", "wasm-wasip1-threads", "wasm-wasip2-threads", "cross")
 
 add_rules("mode.debug", "mode.release", "mode.releasedbg")
 set_defaultmode("releasedbg")
@@ -87,19 +87,43 @@ option("uwvm-test")
 	add_defines("UWVM_TEST")
 option_end()
 
+option("uwvm-default-mvp")
+	set_default(false)
+	set_showmenu(true)
+	add_defines("UWVM_DEFAULT_MVP")
+option_end()
+
+option("fno-exceptions")
+	set_default(false)
+	set_showmenu(true)
+option_end()
 
 function defopt()
 	set_languages("c11", "cxx23")
 
-	-- if not is_plat("msdosdjgpp") then
-		add_options("native")
-	-- end
+	--native
+	add_options("native")
+
+	--timer
 	add_options("timer")
+
+	--test
 	add_options("uwvm-test")
 
-	set_exceptions("no-cxx")
+	-- fno-exceptions
+	local disable_cpp_exceptions = get_config("fno-exceptions")
 
+	if disable_cpp_exceptions then
+		set_exceptions("no-cxx")
+	end
+
+	-- use llvm
 	local use_llvm_toolchain = get_config("use-llvm")
+
+	if use_llvm_toolchain then	
+		add_cxflags("-Wno-braced-scalar-init")
+	end
+
 	if is_plat("windows") then
 		if use_llvm_toolchain then	
 			set_toolchains("clang-cl")
@@ -112,6 +136,7 @@ function defopt()
 		end
 	end
 
+	-- sysroot
 	if not is_plat("windows") then
 		local sysroot_para = get_config("sysroot")
 		if sysroot_para ~= "default" and sysroot_para then
@@ -216,7 +241,9 @@ function defopt()
 
 		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
-		add_cxflags("-fno-asynchronous-unwind-tables")
+		if disable_cpp_exceptions then
+			add_cxflags("-fno-asynchronous-unwind-tables")
+		end
 		if is_mode("release", "releasedbg") then
 			add_cxflags("-fno-ident")
 		end
@@ -273,7 +300,9 @@ function defopt()
 	elseif is_plat("linux") then
 		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
-		add_cxflags("-fno-asynchronous-unwind-tables")
+		if disable_cpp_exceptions then
+			add_cxflags("-fno-asynchronous-unwind-tables")
+		end
 		if is_mode("release", "releasedbg") then
 			add_cxflags("-fno-ident")
 		end
@@ -316,7 +345,9 @@ function defopt()
 	elseif is_plat("msdosdjgpp") then
 		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
-		add_cxflags("-fno-asynchronous-unwind-tables")
+		if disable_cpp_exceptions then
+			add_cxflags("-fno-asynchronous-unwind-tables")
+		end
 		if is_mode("release", "releasedbg") then
 			add_cxflags("-fno-ident")
 		end
@@ -341,7 +372,9 @@ function defopt()
 	elseif is_plat("unix", "bsd", "freebsd", "dragonflybsd", "netbsd", "openbsd", "sun") then
 		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
-		add_cxflags("-fno-asynchronous-unwind-tables")
+		if disable_cpp_exceptions then
+			add_cxflags("-fno-asynchronous-unwind-tables")
+		end
 		if is_mode("release", "releasedbg") then
 			add_cxflags("-fno-ident")
 		end
@@ -369,7 +402,9 @@ function defopt()
 	elseif is_plat("macosx", "iphoneos", "watchos") then -- unknown-apple-darwin
 		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
-		add_cxflags("-fno-asynchronous-unwind-tables")
+		if disable_cpp_exceptions then
+			add_cxflags("-fno-asynchronous-unwind-tables")
+		end
 		if is_mode("release", "releasedbg") then
 			add_cxflags("-fno-ident")
 		end
@@ -394,12 +429,14 @@ function defopt()
 		add_cxflags("-pthread",{force = true})
 		add_ldflags("-pthread",{force = true})
 
-	elseif is_plat("wasm-wasi", "wasm-wasip1", "wasm-wasip2") then -- wasm-wasi is equivalent to wasm-wasip1
+	elseif is_plat("wasm-wasi", "wasm-wasip1", "wasm-wasip2", "wasm-wasi-threads", "wasm-wasip1-threads", "wasm-wasip2-threads") then -- wasm-wasi is equivalent to wasm-wasip1
 		set_extension(".wasm")
 
 		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
-		add_cxflags("-fno-asynchronous-unwind-tables")
+		if disable_cpp_exceptions then
+			add_cxflags("-fno-asynchronous-unwind-tables")
+		end
 		if is_mode("release", "releasedbg") then
 			add_cxflags("-fno-ident")
 		end
@@ -430,9 +467,21 @@ function defopt()
 			elseif is_plat("wasm-wasip1") then
 				add_cxflags("--target=wasm32-wasip1", {force = true})
 				add_ldflags("--target=wasm32-wasip1", {force = true})
-			else
+			elseif is_plat("wasm-wasip2") then
 				add_cxflags("--target=wasm32-wasip2", {force = true})
 				add_ldflags("--target=wasm32-wasip2", {force = true})
+			elseif is_plat("wasm-wasi-threads") then
+				add_cxflags("--target=wasm32-wasi-threads", {force = true})
+				add_ldflags("--target=wasm32-wasi-threads", {force = true})
+				add_defines("UWVM_ENABLE_WASI_THREADS")
+			elseif is_plat("wasm-wasip1-threads") then
+				add_cxflags("--target=wasm32-wasip1-threads", {force = true})
+				add_ldflags("--target=wasm32-wasip1-threads", {force = true})
+				add_defines("UWVM_ENABLE_WASI_THREADS")
+			elseif is_plat("wasm-wasip2-threads") then
+				add_cxflags("--target=wasm32-wasip2-threads", {force = true})
+				add_ldflags("--target=wasm32-wasip2-threads", {force = true})
+				add_defines("UWVM_ENABLE_WASI_THREADS")
 			end
 		elseif is_arch("wasm64") then
 			if is_plat("wasm-wasi") then
@@ -441,16 +490,33 @@ function defopt()
 			elseif is_plat("wasm-wasip1") then
 				add_cxflags("--target=wasm64-wasip1", {force = true})
 				add_ldflags("--target=wasm64-wasip1", {force = true})
-			else
+			elseif is_plat("wasm-wasip2") then
 				add_cxflags("--target=wasm64-wasip2", {force = true})
 				add_ldflags("--target=wasm64-wasip2", {force = true})
+			elseif is_plat("wasm-wasi-threads") then
+				add_cxflags("--target=wasm64-wasi-threads", {force = true})
+				add_ldflags("--target=wasm64-wasi-threads", {force = true})
+				add_defines("UWVM_ENABLE_WASI_THREADS")
+			elseif is_plat("wasm-wasip1-threads") then
+				add_cxflags("--target=wasm64-wasip1-threads", {force = true})
+				add_ldflags("--target=wasm64-wasip1-threads", {force = true})
+				add_defines("UWVM_ENABLE_WASI_THREADS")
+			elseif is_plat("wasm-wasip2-threads") then
+				add_cxflags("--target=wasm64-wasip2-threads", {force = true})
+				add_ldflags("--target=wasm64-wasip2-threads", {force = true})
+				add_defines("UWVM_ENABLE_WASI_THREADS")
 			end
 		end
+
+		add_syslinks("c++abi")
+		add_syslinks("unwind")
 
 	elseif is_plat("cross") then
 		add_cxxflags("-fno-rtti")
 		add_cxflags("-fno-unwind-tables")
-		add_cxflags("-fno-asynchronous-unwind-tables")
+		if disable_cpp_exceptions then
+			add_cxflags("-fno-asynchronous-unwind-tables")
+		end
 		if is_mode("release", "releasedbg") then
 			add_cxflags("-fno-ident")
 		end
@@ -515,9 +581,11 @@ target("uwvm")
 	defopt()
 
 	-- libunwind
-	if not (is_plat("windows") or is_plat("msdosdjgpp")) then
-		add_deps("unwind")
-		add_includedirs("third-parties/libunwind/include/")
+	if disable_cpp_exceptions then
+		if not (is_plat("windows") or is_plat("msdosdjgpp") or is_plat("wasm-wasi", "wasm-wasip1", "wasm-wasip2")) then
+			add_deps("unwind")
+			add_includedirs("third-parties/libunwind/include/")
+		end
 	end
 
 	-- mimalloc
@@ -553,21 +621,22 @@ target("uwvm")
 	end
 target_end()
 
-if not (is_plat("windows") or is_plat("msdosdjgpp"))then
-	target("unwind")
-		set_kind("static")
-		defopt()
+if disable_cpp_exceptions then
+	if not (is_plat("windows") or is_plat("msdosdjgpp") or is_plat("wasm-wasi", "wasm-wasip1", "wasm-wasip2"))then
+		target("unwind")
+			set_kind("static")
+			defopt()
 
-		add_defines("_LIBUNWIND_IS_NATIVE_ONLY")
+			add_defines("_LIBUNWIND_IS_NATIVE_ONLY")
 
-		add_includedirs("third-parties/libunwind/include/")
+			add_includedirs("third-parties/libunwind/include/")
 
-		add_files("third-parties/libunwind/src/**.cpp")
-		add_files("third-parties/libunwind/src/**.c")
-		add_files("third-parties/libunwind/src/**.S")	
-	target_end()
+			add_files("third-parties/libunwind/src/**.cpp")
+			add_files("third-parties/libunwind/src/**.c")
+			add_files("third-parties/libunwind/src/**.S")	
+		target_end()
+	end
 end
-
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
 --

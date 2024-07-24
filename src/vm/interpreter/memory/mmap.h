@@ -57,14 +57,14 @@ namespace uwvm::vm::interpreter::memory
             ::std::size_t memory_max_pages{};
             if(::uwvm::features::enable_memory64)
             {
-                memory_max_pages = ::std::min(msec.limits.min, ::uwvm::wasm::max_memory64_wasm_pages);
+                memory_max_pages = ::std::min(static_cast<::std::uint_least64_t>(msec.limits.min), ::uwvm::wasm::max_memory64_wasm_pages);
 
                 memory_max_pages <<= ::uwvm::wasm::num_bytes_per_page_log2 - mpslg2;
             }
             else
             {
                 if constexpr(sizeof(::std::size_t) == 8) { memory_max_pages = (static_cast<::std::uint_fast64_t>(8) * 1024 * 1024 * 1024) >> mpslg2; }
-                else { memory_max_pages = (static_cast<::std::uint_fast64_t>(2) * 1024 * 1024 * 1024) >> mpslg2; }
+                else { memory_max_pages = (static_cast<::std::uint_fast64_t>(4) * 1024 * 1024 * 1024) /* overcommit */ >> mpslg2; }
             }
             constexpr ::std::size_t memory_num_guard_bytes{65536};
             auto const num_guard_pages = memory_num_guard_bytes >> mpslg2;
@@ -164,11 +164,15 @@ namespace uwvm::vm::interpreter::memory
             auto const mpslg2{system_page_size};
 
             ::std::size_t memory_max_pages{};
-            if(::uwvm::features::enable_memory64) { memory_max_pages = ::std::max(memory_length, (static_cast<::std::uint_fast64_t>(8) * 1024 * 1024 * 1024)); }
+            if(::uwvm::features::enable_memory64)
+            {
+                memory_max_pages = static_cast<::std::size_t>(
+                    ::std::max(static_cast<::std::uint_fast64_t>(memory_length), (static_cast<::std::uint_fast64_t>(8) * 1024 * 1024 * 1024)));
+            }
             else
             {
                 if constexpr(sizeof(::std::size_t) == 8) { memory_max_pages = (static_cast<::std::uint_fast64_t>(8) * 1024 * 1024 * 1024); }
-                else { memory_max_pages = (static_cast<::std::uint_fast64_t>(2) * 1024 * 1024 * 1024); }
+                else { memory_max_pages = (static_cast<::std::uint_fast64_t>(4) * 1024 * 1024 * 1024) /* overcommit */; }
             }
             total_pages = memory_max_pages;
             memory_begin = ::fast_io::details::sys_mmap(nullptr, memory_max_pages, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -188,11 +192,15 @@ namespace uwvm::vm::interpreter::memory
             auto const mpslg2{system_page_size};
 
             ::std::size_t memory_max_pages{};
-            if(::uwvm::features::enable_memory64) { memory_max_pages = ::std::max(memory_length, (static_cast<::std::uint_fast64_t>(8) * 1024 * 1024 * 1024)); }
+            if(::uwvm::features::enable_memory64)
+            {
+                memory_max_pages = static_cast<::std::size_t>(
+                    ::std::max(static_cast<::std::uint_fast64_t>(memory_length), (static_cast<::std::uint_fast64_t>(8) * 1024 * 1024 * 1024)));
+            }
             else
             {
                 if constexpr(sizeof(::std::size_t) == 8) { memory_max_pages = (static_cast<::std::uint_fast64_t>(8) * 1024 * 1024 * 1024); }
-                else { memory_max_pages = (static_cast<::std::uint_fast64_t>(2) * 1024 * 1024 * 1024); }
+                else { memory_max_pages = (static_cast<::std::uint_fast64_t>(4) * 1024 * 1024 * 1024) /* overcommit */; }
             }
             total_pages = memory_max_pages;
             memory_begin = ::fast_io::details::sys_mmap(nullptr, memory_max_pages, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);

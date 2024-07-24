@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include <fast_io.h>
-#include <fast_io_dsal/deque.h>
 #include <fast_io_dsal/stack.h>
 #include "../../wasm/module.h"
 #include "../../run/wasm_file.h"
@@ -16,6 +15,8 @@ namespace uwvm::vm::interpreter
             ::uwvm::wasm::wasm_f32 f32;
             ::uwvm::wasm::wasm_f64 f64;
             ::uwvm::wasm::wasm_v128 v128;
+            ::std::size_t ref;
+            ::uwvm::wasm::value_type null_reftype;
         };
 
         ::uwvm::wasm::value_type vt{};
@@ -120,18 +121,22 @@ namespace uwvm::vm::interpreter
         operator_t const* curr_op{};
         operator_t const* end_op{};
 
-        ::std::size_t stack_top{};  // Prevent stack expansion
         ::std::size_t local_top{};
 
-        inline static ::std::size_t default_int_stack_size{static_cast<::std::size_t>(8) * 1024 * 1024};
+        inline static ::std::size_t default_int_stack_size{1024};
 
-        constexpr stack_machine() noexcept
+        inline static ::std::size_t default_local_size{
+#ifdef __DJGPP__
+            static_cast<::std::size_t>(64)
+#else
+            static_cast<::std::size_t>(1)
+#endif
+            * 1024};
+
+        void init() noexcept
         {
             stack.reserve(default_int_stack_size);
-            local_storages.reserve(default_int_stack_size);
-#if 0
-            flow.reserve(static_cast<::std::size_t>(2) * 1024);
-#endif
+            local_storages.reserve(default_local_size);
         }
     };
 
@@ -142,7 +147,7 @@ namespace uwvm::vm::interpreter
         union
         {
             // pointers
-            struct 
+            struct
             {
                 operator_t const* end;
                 operator_t const* branch;
@@ -151,8 +156,8 @@ namespace uwvm::vm::interpreter
             // size_t
             struct
             {
-                ::std::size_t sz1; // end
-                ::std::size_t sz2; // branch
+                ::std::size_t sz1;  // end
+                ::std::size_t sz2;  // branch
             };
 
             // value
@@ -161,7 +166,6 @@ namespace uwvm::vm::interpreter
             ::uwvm::wasm::wasm_f32 f32;
             ::uwvm::wasm::wasm_f64 f64;
             ::uwvm::wasm::wasm_v128 v128;
-
         };
     };
 

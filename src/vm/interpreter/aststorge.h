@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <fast_io_dsal/vector.h>
+#include <fast_io_dsal/deque.h>
 #include "ast.h"
 
 namespace uwvm::vm::interpreter
@@ -7,7 +8,8 @@ namespace uwvm::vm::interpreter
     struct ast_storage_t
     {
         ::fast_io::vector<::uwvm::vm::interpreter::ast> asts{};
-        ::fast_io::deque<::fast_io::vector<operator_t*>> ext{};
+        // Inserting elements at the beginning and end of the deque container will not render any iterators invalid
+        ::fast_io::deque<::fast_io::vector<operator_t>> ext{};
     };
 
     inline ast_storage_t stroage{};

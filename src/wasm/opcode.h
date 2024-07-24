@@ -6,7 +6,7 @@
 namespace uwvm::wasm
 {
     // https://pengowray.github.io/wasm-ops/
-    
+
     // mvp or prefix
     enum class op_basic : ::uwvm::wasm::op_basic_type  // u8
     {
@@ -25,6 +25,9 @@ namespace uwvm::wasm
         delegate_ = 0x18,
         catch_all = 0x19,
 
+        // EH control
+        try_table = 0x1f,
+
         // Control flow
         unreachable = 0x00,
         br = 0x0c,
@@ -33,6 +36,12 @@ namespace uwvm::wasm
         return_ = 0x0f,
         call = 0x10,
         call_indirect = 0x11,
+
+        // type func
+        return_call = 0x12,
+        return_call_indirect = 0x13,
+        call_ref = 0x14,
+        return_call_ref = 0x15,
 
         // Stack manipulation
         drop = 0x1a,
@@ -233,7 +242,7 @@ namespace uwvm::wasm
         f32_reinterpret_i32 = 0xbe,
         f64_reinterpret_i64 = 0xbf,
 
-        // 8- and 16-bit sign extension operators
+        // 8 and 16-bit sign extension operators
         i32_extend8_s = 0xc0,
         i32_extend16_s = 0xc1,
         i64_extend8_s = 0xc2,
@@ -242,13 +251,17 @@ namespace uwvm::wasm
 
         // Reference type operators
         ref_func = 0xd2,
+        ref_as_no_null = 0xd3,  // type func ref
+        br_on_null = 0xd4,      // type func ref
+        ref_eq = 0xd5,
+        br_on_non_null = 0xd6,
 
         /**********
          * prefix *
          **********/
         simd_interleaved = 0xff,
         simd = 0xfd,
-        reference_types = 0xfc,
+        fcext = 0xfc,
         bulk_memory = 0xfc,
     };
 
@@ -657,19 +670,6 @@ namespace uwvm::wasm
         table_init = 0x0c,
         table_copy = 0x0e,
         table_size = 0x10,
-
-        // Memory Tag
-        memory_randomtag = 0x20,
-        memory_copytag = 0x21,
-        memory_subtag = 0x22,
-        memory_loadtag = 0x23,
-        memory_storetag = 0x24,
-        memory_storeztag = 0x25,
-        memory_randomstoretag = 0x28,
-        memory_randomstoreztag = 0x29,
-        memory_hinttag = 0x2c,
-        memory_hintstoretag = 0x2d,
-        memory_hintstoreztag = 0x2e,
 
         // Saturating float->int truncation operators
         i32_trunc_sat_f32_s = 0x00,

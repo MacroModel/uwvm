@@ -8,10 +8,13 @@
 #include "../wasm.h"
 
 #include "memory/memory.h"
+#include "table/table.h"
 
 #include "ast.h"
 #include "aststorge.h"
+
 #include "global.h"
+#include "../abi.h"
 
 #include "astgen.h"
 #include "astrun.h"
@@ -25,11 +28,29 @@ namespace uwvm::vm::interpreter
 #endif
         auto const& wasmmod{::uwvm::global_wasm_module};
 
-        ::uwvm::vm::start_func = ::uwvm::vm::get_start_func(wasmmod);
+        auto const import_function_count{wasmmod.importsec.func_types.size()};
+        auto const local_func_count{wasmmod.functionsec.function_count};
+        auto const func_count{import_function_count + local_func_count};
 
-        if(::uwvm::vm::start_func == static_cast<::std::size_t>(-1)) [[unlikely]]
+        auto const import_global_count{wasmmod.importsec.global_types.size()};
+        auto const local_global_count{wasmmod.globalsec.global_count};
+        auto const global_count{import_global_count + local_global_count};
+
+        auto const import_table_count{wasmmod.importsec.table_types.size()};
+        auto const local_table_count{wasmmod.tablesec.table_count};
+        auto const table_count{import_table_count + local_table_count};
+
+        // init import
+        ::uwvm::vm::abi_detect();
+
+        // get start func
+        if(::uwvm::vm::start_func == static_cast<::std::size_t>(-1)) [[likely]]
         {
-            ::fast_io::io::perr(::uwvm::u8err,
+            ::uwvm::vm::start_func = ::uwvm::vm::get_start_func(wasmmod);
+
+            if(::uwvm::vm::start_func == static_cast<::std::size_t>(-1)) [[unlikely]]
+            {
+                ::fast_io::io::perr(::uwvm::u8err,
                                 u8"\033[0m"
 #ifdef __MSDOS__
                                 u8"\033[37m"
@@ -48,16 +69,35 @@ namespace uwvm::vm::interpreter
                                 u8"Cannot find function: start.\n"
                                 u8"\033[0m"
                                 u8"Terminate.\n\n");
-            ::fast_io::fast_terminate();
+                ::fast_io::fast_terminate();
+            }
         }
-
-        auto const import_function_count{wasmmod.importsec.func_types.size()};
-        auto const local_func_count{wasmmod.functionsec.function_count};
-        auto const func_count{import_function_count + local_func_count};
-
-        auto const import_global_count{wasmmod.importsec.global_types.size()};
-        auto const local_global_count{wasmmod.globalsec.global_count};
-        auto const global_count{import_global_count + local_global_count};
+        else
+        {
+            if(::uwvm::vm::start_func - import_function_count >= local_func_count) [[unlikely]]
+            {
+                ::fast_io::io::perr(::uwvm::u8err,
+                                u8"\033[0m"
+#ifdef __MSDOS__
+                                u8"\033[37m"
+#else
+                                u8"\033[97m"
+#endif
+                                u8"uwvm: "
+                                u8"\033[31m"
+                                u8"[fatal] "
+                                u8"\033[0m"
+#ifdef __MSDOS__
+                                u8"\033[37m"
+#else
+                                u8"\033[97m"
+#endif
+                                u8"Incorrect start function index.\n"
+                                u8"\033[0m"
+                                u8"Terminate.\n\n");
+                ::fast_io::fast_terminate();
+            }
+        }
 
         // init global
         ::uwvm::vm::interpreter::globals.init(global_count);
@@ -135,9 +175,91 @@ namespace uwvm::vm::interpreter
 
         // init memory
         ::uwvm::vm::interpreter::memories.reserve(wasmmod.memorysec.memory_count);
-        for(auto& i: wasmmod.memorysec.types)
+        for(auto const& i: wasmmod.memorysec.types) { ::uwvm::vm::interpreter::memories.emplace_back_unchecked(i); }
+
+        // init data
+        for(auto const& i: wasmmod.datasec.entries)
         {
-            ::uwvm::vm::interpreter::memories.emplace_back_unchecked(i);
+            auto const size{i.size};
+            auto const& mem{::uwvm::vm::interpreter::memories.index_unchecked(i.index)};
+            auto const begin{mem.memory_begin + static_cast<::std::size_t>(i.offset.i32)};
+            if(begin + size >= mem.memory_begin + mem.memory_length) [[unlikely]]
+            {
+                ::fast_io::io::perr(::uwvm::u8err,
+                                u8"\033[0m"
+#ifdef __MSDOS__
+                                u8"\033[37m"
+#else
+                                u8"\033[97m"
+#endif
+                                u8"uwvm: "
+                                u8"\033[31m"
+                                u8"[fatal] "
+                                u8"\033[0m"
+#ifdef __MSDOS__
+                                u8"\033[37m"
+#else
+                                u8"\033[97m"
+#endif
+                                u8"Writing data out of bounds.\n"
+                                u8"\033[0m"
+                                u8"Terminate.\n\n");
+                ::fast_io::fast_terminate();
+            }
+
+            ::fast_io::freestanding::my_memcpy(begin, i.data_begin, size);
+        }
+
+        // init table
+        ::uwvm::vm::interpreter::table::table_enum = ::fast_io::vector<::fast_io::vector<::std::size_t>>(table_count);
+
+        // enum to table
+
+        if(local_table_count != 0) [[likely]]
+        {
+            auto& table{::uwvm::vm::interpreter::table::table_enum.front_unchecked()};
+            auto const& local_table{wasmmod.tablesec.types.front_unchecked()};
+            ::std::size_t all_sz{};
+            for(auto const& i: wasmmod.elemsec.elem_segments) { all_sz += i.elem_count; }
+
+            table = ::fast_io::vector<::std::size_t>(::std::max(all_sz, local_table.limits.min));
+
+            if(local_table.limits.present_max)
+            {
+                if(all_sz > local_table.limits.max) [[unlikely]]
+                {
+                    ::fast_io::io::perr(::uwvm::u8err,
+                                u8"\033[0m"
+#ifdef __MSDOS__
+                                u8"\033[37m"
+#else
+                                u8"\033[97m"
+#endif
+                                u8"uwvm: "
+                                u8"\033[31m"
+                                u8"[fatal] "
+                                u8"\033[0m"
+#ifdef __MSDOS__
+                                u8"\033[37m"
+#else
+                                u8"\033[97m"
+#endif
+                                u8"Writing data out of table's boundary.\n"
+                                u8"\033[0m"
+                                u8"Terminate.\n\n");
+                    ::fast_io::fast_terminate();
+                }
+
+                // reserve
+                table.reserve(local_table.limits.max);
+            }
+
+            ::std::size_t counter{};
+            for(auto const& i: wasmmod.elemsec.elem_segments)
+            {
+                ++counter;
+                for(auto const j: i.elems) { table.index_unchecked(counter++) = j; }
+            }
         }
 
         // init ast

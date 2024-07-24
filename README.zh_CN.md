@@ -51,37 +51,38 @@ $ uwvm <param1> <param2> ... --run <file> <argv1> <argv2> ...
 ```
 * 运行模式
 ```bash
---mode [objdump(默认), int]
+--mode [objdump, int(默认)]
 ```
 * 加载 WASM ABI (默认自动检测)
 ```bash
---abi [bare|emscripten|wasip1|wasip2]
+--abi [bare|emscripten|wasi]
 ```
 
 ## 特征
 ### 功能扩展
-| 功能                                                                                                                                               |          参数                      |
-|----------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
-| [JS BigInt to Wasm i64 integration](https://github.com/WebAssembly/JS-BigInt-integration)                                                          |  N/A                               |
-| [Bulk memory operations](https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md)           |  :x:                               |
-| [Extended constant expressions](https://github.com/WebAssembly/extended-const/blob/master/proposals/extended-const/Overview.md)                    |  :x:                               |
-| [Garbage collection](https://github.com/WebAssembly/gc)                                                                                            |  :x:                               |
-| [Multiple memories](https://github.com/WebAssembly/multi-memory/blob/master/proposals/multi-memory/Overview.md)                                    |  ```--enable-multi-memory```       |
-| [Multi-value](https://github.com/WebAssembly/spec/blob/master/proposals/multi-value/Overview.md)                                                   |  ```--enable-multi-value```        |
-| [Mutable globals](https://github.com/WebAssembly/mutable-global/blob/master/proposals/mutable-global/Overview.md)                                  |  ```--enable-mutable-globals```    |
-| [Reference types](https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md)                                |  ```--enable-reference-types```    |
-| [Relaxed SIMD](https://github.com/WebAssembly/relaxed-simd/tree/main/proposals/relaxed-simd)                                                       |  ```--enable-relaxed-simd```       |
-| [Non-trapping float-to-int conversions](https://github.com/WebAssembly/spec/blob/master/proposals/nontrapping-float-to-int-conversion/Overview.md) |  :x:                               |
-| [Sign-extension operations](https://github.com/WebAssembly/spec/blob/master/proposals/sign-extension-ops/Overview.md)                              |  :x:                               |
-| [Fixed-width SIMD](https://github.com/WebAssembly/simd/blob/master/proposals/simd/SIMD.md)                                                         |  ```--enable-fixed-width-simd```   |
-| [Extended constant expressions](https://github.com/WebAssembly/extended-const/blob/master/proposals/extended-const/Overview.md)                    |  :x:                               |
-| [Tail calls](https://github.com/WebAssembly/tail-call/blob/master/proposals/tail-call/Overview.md)                                                 |  :x:                               |
-| [Threads and atomics](https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md)                                            |  ```--enable-thread```             |
-| [Exception handling](https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md)                     |  ```--enable-exception-handling``` |
-| [JS Promise Integration](https://github.com/WebAssembly/js-promise-integration)                                                                    |  N/A                               |
-| [Memory64](https://github.com/WebAssembly/memory64/blob/master/proposals/memory64/Overview.md)                                                     |  ```--enable-memory64```           |
-| [Custom Page Sizes](https://github.com/WebAssembly/custom-page-sizes/blob/main/proposals/custom-page-sizes/Overview.md)                            |  ```--enable-custom-page-sizes```  |
-| [Type reflection](https://github.com/WebAssembly/js-types/blob/main/proposals/js-types/Overview.md)                                                |  :x:                               |
+| 功能                                                                                                                                               |          参数                        |
+|----------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------|
+| [JS BigInt to Wasm i64 integration](https://github.com/WebAssembly/JS-BigInt-integration)                                                          |  N/A                                 |
+| [Bulk memory operations](https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md)           |  V1.0.1                              |
+| [Extended constant expressions](https://github.com/WebAssembly/extended-const/blob/master/proposals/extended-const/Overview.md)                    |  :x:                                 |
+| [Garbage collection](https://github.com/WebAssembly/gc)                                                                                            |  :x:                                 |
+| [Multiple memories](https://github.com/WebAssembly/multi-memory/blob/master/proposals/multi-memory/Overview.md)                                    |  ```--enable-multi-memory```         |
+| [Multi-value](https://github.com/WebAssembly/spec/blob/master/proposals/multi-value/Overview.md)                                                   |  V1.0.1                              |
+| [Mutable globals](https://github.com/WebAssembly/mutable-global/blob/master/proposals/mutable-global/Overview.md)                                  |  V1.0.1                              |
+| [Reference types](https://github.com/WebAssembly/reference-types/blob/master/proposals/reference-types/Overview.md)                                |  V1.0.1                              |
+| [Relaxed SIMD](https://github.com/WebAssembly/relaxed-simd/tree/main/proposals/relaxed-simd)                                                       |  ```--enable-relaxed-simd```         |
+| [Non-trapping float-to-int conversions](https://github.com/WebAssembly/spec/blob/master/proposals/nontrapping-float-to-int-conversion/Overview.md) |  V1.0.1                              |
+| [Sign-extension operations](https://github.com/WebAssembly/spec/blob/master/proposals/sign-extension-ops/Overview.md)                              |  :x:                                 |
+| [Fixed-width SIMD](https://github.com/WebAssembly/simd/blob/master/proposals/simd/SIMD.md)                                                         |  ```--enable-fixed-width-simd```     |
+| [Extended constant expressions](https://github.com/WebAssembly/extended-const/blob/master/proposals/extended-const/Overview.md)                    |  :x:                                 |
+| [Tail calls](https://github.com/WebAssembly/tail-call/blob/master/proposals/tail-call/Overview.md)                                                 |  :x:                                 |
+| [Threads and atomics](https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md)                                            |  ```--enable-thread```               |
+| [Exception handling](https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md)                     |  ```--enable-exception-handling```   |
+| [JS Promise Integration](https://github.com/WebAssembly/js-promise-integration)                                                                    |  N/A                                 |
+| [Memory64](https://github.com/WebAssembly/memory64/blob/master/proposals/memory64/Overview.md)                                                     |  ```--enable-memory64```             |
+| [Custom Page Sizes](https://github.com/WebAssembly/custom-page-sizes/blob/main/proposals/custom-page-sizes/Overview.md)                            |  ```--enable-custom-page-sizes```    |
+| [Type reflection](https://github.com/WebAssembly/js-types/blob/main/proposals/js-types/Overview.md)                                                |  :x:                                 |
+| [Sign-extension operators](https://github.com/WebAssembly/sign-extension-ops/blob/master/proposals/sign-extension-ops/Overview.md)                 |  V1.0.1                              |
 
 ### 多平台支持
 * (x86\_64, i386, aarch64, arm)-windows-(gnu, msvc) (支持UCRT和MSVCRT)
@@ -94,7 +95,7 @@ $ uwvm <param1> <param2> ... --run <file> <argv1> <argv2> ...
 * unknown-sun
 * unknown-apple-darwin
 * i386-msdosdjgpp
-* wasm32-wasip1, wasm32-wasip2, wasm64-wasip1, wasm64-wasip2 (自举)
+* wasm32-wasip1, wasm32-wasip2, wasm64-wasip1, wasm64-wasip2, wasm32-wasip1-threads, wasm32-wasip2-threads, wasm64-wasip1-threads, wasm64-wasip2-threads (自举)
 * etc.
 
 ## 如何构建
@@ -145,6 +146,10 @@ $ xmake f -m [release|releasedbg|debug] -p [windows|mingw|linux|sun|msdosdjgpp|b
 * 使用mimalloc作为默认分配器
 ```bash 
 --use-mimalloc=y|n(default)
+```
+* 禁用c++异常（会导致部分WASI用不了）
+```bash
+--fno-exceptions=y|n(default)
 ```
 * 启用清洁器
 ```bash

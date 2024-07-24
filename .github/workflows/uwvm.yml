@@ -15,10 +15,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: xmake-io/github-action-setup-xmake@v1
-      - name: Build-x86_64-linux-gnu
+  
+      - name: Build-Default-x86_64-linux-gnu
         run: |
+          xmake clean
+          xmake f --clean
           xmake f -p linux -a x86_64 -m debug --static=n
           xmake -v
-      - name: Test-x86_64-linux-gnu
+      - name: Test-Default-x86_64-linux-gnu
         run: |
           xmake run uwvm --version
+          xmake install -o `pwd`/uwvm-install/
+      - name: Build-UWVM-TEST-x86_64-linux-gnu
+        run: |
+          xmake clean
+          xmake f --clean
+          xmake f -p linux -a x86_64 -m debug --static=n --uwvm-test=y --policies=build.sanitizer.address
+          xmake -v
+      - name: Test-UWVM-TEST-x86_64-linux-gnu
+        run: |
+          xmake run uwvm

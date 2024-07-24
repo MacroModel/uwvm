@@ -45,7 +45,11 @@ namespace uwvm::vm::interpreter
 {
     namespace details
     {
+#if !(defined(__wasi__) && !defined(UWVM_ENABLE_WASI_THREADS))
         extern thread_local ::fast_io::tlc::stack<d_flow_t, ::fast_io::tlc::vector<d_flow_t>> ga_flow;
+#else
+        inline ::fast_io::tlc::stack<d_flow_t, ::fast_io::tlc::vector<d_flow_t>> ga_flow{};
+#endif
     }  // namespace details
 
     // https://pengowray.github.io/wasm-ops/
@@ -78,6 +82,10 @@ namespace uwvm::vm::interpreter
         auto const local_global_count{wasmmod.globalsec.global_count};
         auto const global_count{import_global_count + local_global_count};
 
+        auto const import_table_count{wasmmod.importsec.table_types.size()};
+        auto const local_table_count{wasmmod.tablesec.table_count};
+        auto const table_count{import_table_count + local_table_count};
+
         auto curr{fb.begin};
         auto const end{fb.end};
 
@@ -102,6 +110,11 @@ namespace uwvm::vm::interpreter
 
         for(; curr < end;)
         {
+#if 0
+            ::std::size_t break_point{0x0042f7};
+            if(curr - wasmmod.module_begin == break_point) [[unlikely]] { __debugbreak(); }
+#endif
+
             ::uwvm::wasm::op_basic ob{};
             ::fast_io::freestanding::my_memcpy(__builtin_addressof(ob), curr, sizeof(ob));
 
@@ -111,6 +124,10 @@ namespace uwvm::vm::interpreter
 
             switch(ob)
             {
+                    /*
+                     *  MVP
+                     */
+
                 case ::uwvm::wasm::op_basic::block:
                 {
                     ++curr;
@@ -333,6 +350,7 @@ namespace uwvm::vm::interpreter
                                 ::fast_io::fast_terminate();
                             }
                     }
+
                     auto& op_ebr{temp.operators.emplace_back_unchecked(op)};
                     details::ga_flow.push({op.code_begin, __builtin_addressof(op_ebr), ::uwvm::vm::interpreter::flow_control_t::loop});
 
@@ -563,6 +581,8 @@ namespace uwvm::vm::interpreter
                         case ::uwvm::vm::interpreter::flow_control_t::func:
                         {
                             ++curr;
+
+                            // check func cur == end
                             if(curr != end) [[unlikely]]
                             {
                                 ::fast_io::io::perr(::uwvm::u8err,
@@ -590,11 +610,29 @@ namespace uwvm::vm::interpreter
                                     u8"Terminate.\n\n");
                                 ::fast_io::fast_terminate();
                             }
-                            continue;
+                            break;
                         }
                         case ::uwvm::vm::interpreter::flow_control_t::block: [[fallthrough]];
-                        case ::uwvm::vm::interpreter::flow_control_t::loop: [[fallthrough]];
-                        case ::uwvm::vm::interpreter::flow_control_t::if_: break;
+                        case ::uwvm::vm::interpreter::flow_control_t::if_:
+                        {
+                            for(auto const i: f.brs) { i->ext.end = __builtin_addressof(op_ebr); }
+
+                            f.op->ext.end = __builtin_addressof(op_ebr);
+                            op_ebr.ext.branch = f.op;
+
+                            ++curr;
+                            break;
+                        }
+                        case ::uwvm::vm::interpreter::flow_control_t::loop:
+                        {
+                            for(auto const i: f.brs) { i->ext.end = f.op; }
+
+                            f.op->ext.end = f.op;
+                            op_ebr.ext.branch = __builtin_addressof(op_ebr);
+
+                            ++curr;
+                            break;
+                        }
                         case ::uwvm::vm::interpreter::flow_control_t::else_:
                         {
                             // set "if" and "else" end_pointer to this op
@@ -631,12 +669,6 @@ namespace uwvm::vm::interpreter
                             }
                     }
 
-                    for(auto const i: f.brs) { i->ext.end = __builtin_addressof(op_ebr); }
-
-                    f.op->ext.end = __builtin_addressof(op_ebr);
-                    op_ebr.ext.branch = f.op;
-
-                    ++curr;
                     break;
                 }
                 case ::uwvm::wasm::op_basic::try_:
@@ -655,6 +687,11 @@ namespace uwvm::vm::interpreter
                     break;
                 }
                 case ::uwvm::wasm::op_basic::catch_all:
+                {
+                    ::uwvm::unfinished();
+                    break;
+                }
+                case ::uwvm::wasm::op_basic::try_table:
                 {
                     ::uwvm::unfinished();
                     break;
@@ -890,7 +927,7 @@ namespace uwvm::vm::interpreter
                         = operator_t const*;
 
                     op.ext.branch =
-                        reinterpret_cast<operator_t_const_may_alias_ptr>(const_cast<::fast_io::vector<operator_t*> const*>(__builtin_addressof(vec)));
+                        reinterpret_cast<operator_t_const_may_alias_ptr>(const_cast<::fast_io::vector<operator_t> const*>(__builtin_addressof(vec)));
 
                     for(::std::size_t i{}; i < table_size; ++i)
                     {
@@ -961,7 +998,7 @@ namespace uwvm::vm::interpreter
                             ::fast_io::fast_terminate();
                         }
 
-                        details::ga_flow.get_container().index_unchecked(gfsz - index).brs.push_back(vec.index_unchecked(i));
+                        details::ga_flow.get_container().index_unchecked(gfsz - index).brs.push_back(vec.begin() + i);
 
                         curr = reinterpret_cast<::std::byte const*>(next);
                     }
@@ -1027,6 +1064,34 @@ namespace uwvm::vm::interpreter
                 }
                 case ::uwvm::wasm::op_basic::call_indirect:
                 {
+                    if(local_table_count == 0) [[unlikely]]
+                    {
+                        ::fast_io::io::perr(::uwvm::u8err,
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"uwvm: "
+                                    u8"\033[31m"
+                                    u8"[fatal] "
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"(offset=",
+                                    ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                    u8") "
+                                    u8"No local table."
+                                    u8"\n"
+                                    u8"\033[0m"
+                                    u8"Terminate.\n\n");
+                        ::fast_io::fast_terminate();
+                    }
+
                     ++curr;
                     op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::call_indirect);
 
@@ -1105,8 +1170,42 @@ namespace uwvm::vm::interpreter
 
                     curr = reinterpret_cast<::std::byte const*>(next);
 
-                    ::std::uint_fast8_t reserved{};
-                    ::fast_io::freestanding::my_memcpy(__builtin_addressof(reserved), curr, sizeof(::std::uint_fast8_t));
+                    ::std::size_t reserved{};
+                    auto const [next_reserved, err_reserved]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+                                                                                      reinterpret_cast<char8_t_const_may_alias_ptr>(end),
+                                                                                      ::fast_io::mnp::leb128_get(reserved))};
+                    switch(err_reserved)
+                    {
+                        case ::fast_io::parse_code::ok: break;
+                        default:
+                            [[unlikely]]
+                            {
+                                ::fast_io::io::perr(::uwvm::u8err,
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"uwvm: "
+                                    u8"\033[31m"
+                                    u8"[fatal] "
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"(offset=",
+                                    ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                    u8") "
+                                    u8"Invalid reserved."
+                                    u8"\n"
+                                    u8"\033[0m"
+                                    u8"Terminate.\n\n");
+                                ::fast_io::fast_terminate();
+                            }
+                    }
 
                     if(reserved == 0)
                     {
@@ -1147,9 +1246,30 @@ namespace uwvm::vm::interpreter
                         ::fast_io::fast_terminate();
                     }
 
-                    temp.operators.emplace_back_unchecked(op);
-                    ++curr;
+                    curr = reinterpret_cast<::std::byte const*>(next_reserved);
 
+                    temp.operators.emplace_back_unchecked(op);
+
+                    break;
+                }
+                case ::uwvm::wasm::op_basic::return_call:
+                {
+                    ::uwvm::unfinished();
+                    break;
+                }
+                case ::uwvm::wasm::op_basic::return_call_indirect:
+                {
+                    ::uwvm::unfinished();
+                    break;
+                }
+                case ::uwvm::wasm::op_basic::call_ref:
+                {
+                    ::uwvm::unfinished();
+                    break;
+                }
+                case ::uwvm::wasm::op_basic::return_call_ref:
+                {
+                    ::uwvm::unfinished();
                     break;
                 }
                 case ::uwvm::wasm::op_basic::drop:
@@ -1591,6 +1711,26 @@ namespace uwvm::vm::interpreter
                     ::uwvm::unfinished();
                     break;
                 }
+                case ::uwvm::wasm::op_basic::ref_as_no_null:
+                {
+                    ::uwvm::unfinished();
+                    break;
+                }
+                case ::uwvm::wasm::op_basic::br_on_null:
+                {
+                    ::uwvm::unfinished();
+                    break;
+                }
+                case ::uwvm::wasm::op_basic::ref_eq:
+                {
+                    ::uwvm::unfinished();
+                    break;
+                }
+                case ::uwvm::wasm::op_basic::br_on_non_null:
+                {
+                    ::uwvm::unfinished();
+                    break;
+                }
                 case ::uwvm::wasm::op_basic::select:
                 {
                     op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::select);
@@ -1600,7 +1740,9 @@ namespace uwvm::vm::interpreter
                 }
                 case ::uwvm::wasm::op_basic::select_t:
                 {
-                    ::uwvm::unfinished();
+                    op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::select_t);
+                    temp.operators.emplace_back_unchecked(op);
+                    ++curr;
                     break;
                 }
                 case ::uwvm::wasm::op_basic::i32_load:
@@ -5516,8 +5658,40 @@ namespace uwvm::vm::interpreter
                     ++curr;
                     break;
                 }
+
+                    /*
+                     *  Sign-extension operators
+                     */
+
                 case ::uwvm::wasm::op_basic::i32_extend8_s:
                 {
+                    if(!::uwvm::features::enable_sign_extension_ops) [[unlikely]]
+                    {
+                        ::fast_io::io::perr(::uwvm::u8err,
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"uwvm: "
+                                        u8"\033[31m"
+                                        u8"[fatal] "
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"(offset=",
+                                        ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                        u8") "
+                                        u8"Enter parameter --enable-sign-extension-ops to enable wasm sign extension operators."
+                                        u8"\n"
+                                        u8"\033[0m"
+                                        u8"Terminate.\n\n");
+                        ::fast_io::fast_terminate();
+                    }
                     op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::i32_extend8_s);
                     temp.operators.emplace_back_unchecked(op);
                     ++curr;
@@ -5525,6 +5699,33 @@ namespace uwvm::vm::interpreter
                 }
                 case ::uwvm::wasm::op_basic::i32_extend16_s:
                 {
+                    if(!::uwvm::features::enable_sign_extension_ops) [[unlikely]]
+                    {
+                        ::fast_io::io::perr(::uwvm::u8err,
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"uwvm: "
+                                        u8"\033[31m"
+                                        u8"[fatal] "
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"(offset=",
+                                        ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                        u8") "
+                                        u8"Enter parameter --enable-sign-extension-ops to enable wasm sign extension operators."
+                                        u8"\n"
+                                        u8"\033[0m"
+                                        u8"Terminate.\n\n");
+                        ::fast_io::fast_terminate();
+                    }
                     op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::i32_extend16_s);
                     temp.operators.emplace_back_unchecked(op);
                     ++curr;
@@ -5532,6 +5733,33 @@ namespace uwvm::vm::interpreter
                 }
                 case ::uwvm::wasm::op_basic::i64_extend8_s:
                 {
+                    if(!::uwvm::features::enable_sign_extension_ops) [[unlikely]]
+                    {
+                        ::fast_io::io::perr(::uwvm::u8err,
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"uwvm: "
+                                        u8"\033[31m"
+                                        u8"[fatal] "
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"(offset=",
+                                        ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                        u8") "
+                                        u8"Enter parameter --enable-sign-extension-ops to enable wasm sign extension operators."
+                                        u8"\n"
+                                        u8"\033[0m"
+                                        u8"Terminate.\n\n");
+                        ::fast_io::fast_terminate();
+                    }
                     op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::i64_extend8_s);
                     temp.operators.emplace_back_unchecked(op);
                     ++curr;
@@ -5539,6 +5767,33 @@ namespace uwvm::vm::interpreter
                 }
                 case ::uwvm::wasm::op_basic::i64_extend16_s:
                 {
+                    if(!::uwvm::features::enable_sign_extension_ops) [[unlikely]]
+                    {
+                        ::fast_io::io::perr(::uwvm::u8err,
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"uwvm: "
+                                        u8"\033[31m"
+                                        u8"[fatal] "
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"(offset=",
+                                        ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                        u8") "
+                                        u8"Enter parameter --enable-sign-extension-ops to enable wasm sign extension operators."
+                                        u8"\n"
+                                        u8"\033[0m"
+                                        u8"Terminate.\n\n");
+                        ::fast_io::fast_terminate();
+                    }
                     op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::i64_extend16_s);
                     temp.operators.emplace_back_unchecked(op);
                     ++curr;
@@ -5546,6 +5801,33 @@ namespace uwvm::vm::interpreter
                 }
                 case ::uwvm::wasm::op_basic::i64_extend32_s:
                 {
+                    if(!::uwvm::features::enable_sign_extension_ops) [[unlikely]]
+                    {
+                        ::fast_io::io::perr(::uwvm::u8err,
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"uwvm: "
+                                        u8"\033[31m"
+                                        u8"[fatal] "
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"(offset=",
+                                        ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                        u8") "
+                                        u8"Enter parameter --enable-sign-extension-ops to enable wasm sign extension operators."
+                                        u8"\n"
+                                        u8"\033[0m"
+                                        u8"Terminate.\n\n");
+                        ::fast_io::fast_terminate();
+                    }
                     op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::i64_extend32_s);
                     temp.operators.emplace_back_unchecked(op);
                     ++curr;
@@ -5566,9 +5848,300 @@ namespace uwvm::vm::interpreter
                     ::uwvm::unfinished();
                     break;
                 }
-                case ::uwvm::wasm::op_basic::reference_types:  // bulk_memory
+                case ::uwvm::wasm::op_basic::fcext:  // bulk_memory
                 {
-                    ::uwvm::unfinished();
+                    ++curr;
+                    ::uwvm::wasm::op_exten_type opet{};
+                    auto const [next_opet, err_opet]{::fast_io::parse_by_scan(reinterpret_cast<char8_t_const_may_alias_ptr>(curr),
+                                                                              reinterpret_cast<char8_t_const_may_alias_ptr>(end),
+                                                                              ::fast_io::mnp::leb128_get(opet))};
+                    switch(err_opet)
+                    {
+                        case ::fast_io::parse_code::ok: break;
+                        default:
+                            [[unlikely]]
+                            {
+                                ::fast_io::io::perr(::uwvm::u8err,
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"uwvm: "
+                                    u8"\033[31m"
+                                    u8"[fatal] "
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"(offset=",
+                                    ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                    u8") "
+                                    u8"Invalid opcode."
+                                    u8"\n"
+                                    u8"\033[0m"
+                                    u8"Terminate.\n\n");
+                                ::fast_io::fast_terminate();
+                            }
+                    }
+
+                    curr = reinterpret_cast<::std::byte const*>(next_opet);
+
+                    switch(static_cast<::uwvm::wasm::op_exten_reftype>(opet))
+                    {
+                        case ::uwvm::wasm::op_exten_reftype::table_grow:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::table_fill:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::memory_init:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::memory_copy:
+                        {
+                            if(!::uwvm::features::enable_bulk_memory_operations) [[unlikely]]
+                            {
+                                ::fast_io::io::perr(::uwvm::u8err,
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"uwvm: "
+                                        u8"\033[31m"
+                                        u8"[fatal] "
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"(offset=",
+                                        ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                        u8") "
+                                        u8"Enter parameter --enable-bulk-memory-operations to enable bulk memory operations."
+                                        u8"\n"
+                                        u8"\033[0m"
+                                        u8"Terminate.\n\n");
+                                ::fast_io::fast_terminate();
+                            }
+
+                            if(wasmmod.memorysec.memory_count == 0) [[unlikely]]
+                            {
+                                ::fast_io::io::perr(::uwvm::u8err,
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"uwvm: "
+                                    u8"\033[31m"
+                                    u8"[fatal] "
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"(offset=",
+                                    ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                    u8") "
+                                    u8"No wasm memory found."
+                                    u8"\n"
+                                    u8"\033[0m"
+                                    u8"Terminate.\n\n");
+                                ::fast_io::fast_terminate();
+                            }
+
+                            ::std::uint_least8_t memory_dst{};
+                            ::fast_io::freestanding::my_memcpy(__builtin_addressof(memory_dst), curr, sizeof(::std::uint_least8_t));
+                            op.ext.sz1 = static_cast<::std::size_t>(memory_dst);
+                            ++curr;
+
+                            ::std::uint_least8_t memory_src{};
+                            ::fast_io::freestanding::my_memcpy(__builtin_addressof(memory_src), curr, sizeof(::std::uint_least8_t));
+                            op.ext.sz2 = static_cast<::std::size_t>(memory_src);
+                            ++curr;
+
+                            op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::fcext::memory_copy);
+                            temp.operators.emplace_back_unchecked(op);
+
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::memory_fill:
+                        {
+                            if(!::uwvm::features::enable_bulk_memory_operations) [[unlikely]]
+                            {
+                                ::fast_io::io::perr(::uwvm::u8err,
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"uwvm: "
+                                        u8"\033[31m"
+                                        u8"[fatal] "
+                                        u8"\033[0m"
+#ifdef __MSDOS__
+                                        u8"\033[37m"
+#else
+                                        u8"\033[97m"
+#endif
+                                        u8"(offset=",
+                                        ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                        u8") "
+                                        u8"Enter parameter --enable-bulk-memory-operations to enable bulk memory operations."
+                                        u8"\n"
+                                        u8"\033[0m"
+                                        u8"Terminate.\n\n");
+                                ::fast_io::fast_terminate();
+                            }
+
+                            if(wasmmod.memorysec.memory_count == 0) [[unlikely]]
+                            {
+                                ::fast_io::io::perr(::uwvm::u8err,
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"uwvm: "
+                                    u8"\033[31m"
+                                    u8"[fatal] "
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"(offset=",
+                                    ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                    u8") "
+                                    u8"No wasm memory found."
+                                    u8"\n"
+                                    u8"\033[0m"
+                                    u8"Terminate.\n\n");
+                                ::fast_io::fast_terminate();
+                            }
+
+                            ::std::uint_least8_t memory{};
+                            ::fast_io::freestanding::my_memcpy(__builtin_addressof(memory), curr, sizeof(::std::uint_least8_t));
+                            op.ext.sz1 = static_cast<::std::size_t>(memory);
+                            ++curr;
+
+                            op.int_func = __builtin_addressof(::uwvm::vm::interpreter::func::fcext::memory_fill);
+                            temp.operators.emplace_back_unchecked(op);
+
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::table_init:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::table_copy:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::table_size:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::i32_trunc_sat_f32_s:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::i32_trunc_sat_f32_u:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::i32_trunc_sat_f64_s:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::i32_trunc_sat_f64_u:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::i64_trunc_sat_f32_s:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::i64_trunc_sat_f32_u:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::i64_trunc_sat_f64_s:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::i64_trunc_sat_f64_u:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::data_drop:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        case ::uwvm::wasm::op_exten_reftype::elem_drop:
+                        {
+                            ::uwvm::unfinished();
+                            break;
+                        }
+                        default:
+                            [[unlikely]]
+                            {
+                                ::fast_io::io::perr(::uwvm::u8err,
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"uwvm: "
+                                    u8"\033[31m"
+                                    u8"[fatal] "
+                                    u8"\033[0m"
+#ifdef __MSDOS__
+                                    u8"\033[37m"
+#else
+                                    u8"\033[97m"
+#endif
+                                    u8"(offset=",
+                                    ::fast_io::mnp::addrvw(curr - wasmmod.module_begin),
+                                    u8") "
+                                    u8"Invalid opcode."
+                                    u8"\n"
+                                    u8"\033[0m"
+                                    u8"Terminate.\n\n");
+                                ::fast_io::fast_terminate();
+                            }
+                    }
                     break;
                 }
                 default:

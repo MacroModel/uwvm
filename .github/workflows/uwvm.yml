@@ -37,14 +37,14 @@ jobs:
           xmake run uwvm
       - name: Prepare-Default-wasm32-wasip1
         run: |
-          wget https://github.com/trcrsired/llvm-releases/releases/download/llvm19-20240706/x86_64-pc-linux-gnu.tar.xz
-          tar -xf x86_64-pc-linux-gnu.tar.xz
+          wget https://github.com/MacroModel/gcc-release/releases/download/llvm6/x86_64-linux-gnu-2.17-native-llvm.tar.xz
+          tar -xf x86_64-linux-gnu-2.17-native-llvm.tar.xz
           wget https://github.com/trcrsired/llvm-releases/releases/download/llvm20-20240723/wasm-sysroots.tar.xz
           tar -xf wasm-sysroots.tar.xz
-          `pwd`/x86_64-pc-linux-gnu/llvm/bin/clang -v
+          `pwd`/x86_64-linux-gnu-2.17-native-llvm/bin/clang -v
       - name: Build-Default-wasm32-wasip1
         run: |
-          xmake f -p wasm-wasip1 -a wasm32 -m debug --use-llvm=y --sdk=`pwd`/x86_64-pc-linux-gnu/llvm/ --sysroot=`pwd`/wasm-sysroots/wasm-sysroot/wasm32-wasip1/
+          xmake f -p wasm-wasip1 -a wasm32 -m debug --use-llvm=y --sdk=`pwd`/x86_64-linux-gnu-2.17-native-llvm/ --sysroot=`pwd`/wasm-sysroots/wasm-sysroot/wasm32-wasip1/
           xmake -v
           xmake install -o `pwd`/uwvm-install/
       - name: Test-Default-wasm32-wasip1

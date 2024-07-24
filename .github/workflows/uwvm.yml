@@ -37,11 +37,13 @@ jobs:
           xmake run uwvm
       - name: Prepare-Default-wasm32-wasip1
         run: |
+          wget https://github.com/24bit-xjkp/toolchains/releases/download/llvm19.0.0-v1/x86_64-linux-gnu-clang19.tar.xz
+          tar -xf x86_64-linux-gnu-clang19.tar.xz
           wget https://github.com/trcrsired/llvm-releases/releases/download/llvm20-20240723/wasm-sysroots.tar.xz
           tar -xf wasm-sysroots.tar.xz
       - name: Build-Default-wasm32-wasip1
         run: |
-          xmake f -p wasm-wasip1 -a wasm32 -m debug --use-llvm=y --sysroot=`pwd`/wasm-sysroots/wasm-sysroot/wasm32-wasip1/
+          xmake f -p wasm-wasip1 -a wasm32 -m debug --use-llvm=y --sdk=`pwd`/x86_64-linux-gnu-clang19/ --sysroot=`pwd`/wasm-sysroots/wasm-sysroot/wasm32-wasip1/
           xmake -v
           xmake install -o `pwd`/uwvm-install/
       - name: Test-Default-wasm32-wasip1
